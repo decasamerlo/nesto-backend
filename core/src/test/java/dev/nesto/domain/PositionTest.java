@@ -34,5 +34,13 @@ class PositionTest {
     void should_reject_negative_values() {
       assertThatIllegalArgumentException().isThrownBy(() -> Position.of(-1));
     }
+
+    @Test
+    @DisplayName("should order ascending by value")
+    void should_order_ascending_by_value() {
+      assertThat(Position.of(1)).isEqualByComparingTo(Position.of(1));
+      assertThat(Position.of(1).compareTo(Position.of(2))).isNegative();
+      assertThat(Position.of(2).compareTo(Position.of(1))).isPositive();
+    }
   }
 }

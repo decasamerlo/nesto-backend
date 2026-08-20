@@ -5,58 +5,66 @@ import java.util.Objects;
 import java.util.Optional;
 
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 @Getter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Node {
 
-  private final NodeId id;
-  private String name;
-  private String description;
+  @EqualsAndHashCode.Include private final NodeId id;
+  private final String name;
+  private final String description;
 
   @Getter(AccessLevel.NONE)
-  private NodeId parentId;
+  private final NodeId parentId;
 
-  private Position position;
+  private final Position position;
 
   private final Instant createdAt;
-  private Instant updatedAt;
+  private final Instant updatedAt;
 
-  private Node(NodeId id, String name, String description, NodeId parentId, Position position, Instant createdAt,
+  private Node(
+      NodeId id,
+      String name,
+      String description,
+      NodeId parentId,
+      Position position,
+      Instant createdAt,
       Instant updatedAt) {
-    this.id = id;
-    this.name = name;
+    this.id = Objects.requireNonNull(id, "id must not be null");
+    this.name = Objects.requireNonNull(name, "name must not be null");
+    if (name.isBlank()) {
+      throw new IllegalArgumentException("name must not be blank");
+    }
     this.description = description;
     this.parentId = parentId;
-    this.position = position;
-    this.createdAt = createdAt;
-    this.updatedAt = updatedAt;
+    this.position = Objects.requireNonNull(position, "position must not be null");
+    this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
+    this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt must not be null");
+    if (parentId != null && parentId.equals(id)) {
+      throw new IllegalArgumentException("parentId must not equal id");
+    }
   }
 
   public Optional<NodeId> getParentId() {
     return Optional.ofNullable(parentId);
   }
 
-  public static Node create(NodeId id, String name, String description, Optional<NodeId> parentId, Position position,
+  public static Node create(
+      NodeId id,
+      String name,
+      String description,
+      Optional<NodeId> parentId,
+      Position position,
       Instant now) {
-    Objects.requireNonNull(id, "id must not be null");
-    Objects.requireNonNull(name, "name must not be null");
     Objects.requireNonNull(parentId, "parentId must not be null");
-    Objects.requireNonNull(position, "position must not be null");
     Objects.requireNonNull(now, "now must not be null");
-
-    if (name.isBlank()) {
-      throw new IllegalArgumentException("name must not be blank");
-    }
-
-    if (parentId.isPresent() && parentId.get().equals(id)) {
-      throw new IllegalArgumentException("parentId must not equal id");
-    }
 
     return new Node(id, name, description, parentId.orElse(null), position, now, now);
   }
 
-  public void rename(String newName, Instant now) {
+  public Node rename(String newName, Instant now) {
     Objects.requireNonNull(newName, "name must not be null");
     Objects.requireNonNull(now, "now must not be null");
     if (newName.isBlank()) {
@@ -64,21 +72,36 @@ public class Node {
     }
 
     if (Objects.equals(newName, this.name)) {
-      return;
+      return this;
     }
 
-    this.name = newName;
-    this.updatedAt = now;
+    return copyWith(newName, this.description, now);
   }
 
-  public void changeDescription(String newDescription, Instant now) {
+  public Node changeDescription(String newDescription, Instant now) {
     Objects.requireNonNull(now, "now must not be null");
 
     if (Objects.equals(newDescription, this.description)) {
-      return;
+      return this;
     }
 
-    this.description = newDescription;
-    this.updatedAt = now;
+    return copyWith(this.name, newDescription, now);
+  }
+
+  public static Node reconstitute(
+      NodeId id,
+      String name,
+      String description,
+      NodeId parentId,
+      Position position,
+      Instant createdAt,
+      Instant updatedAt) {
+
+    return new Node(id, name, description, parentId, position, createdAt, updatedAt);
+  }
+
+  private Node copyWith(String name, String description, Instant updatedAt) {
+    return new Node(
+        this.id, name, description, this.parentId, this.position, this.createdAt, updatedAt);
   }
 }

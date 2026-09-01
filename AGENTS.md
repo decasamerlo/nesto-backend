@@ -12,8 +12,8 @@ Ecosystem context inherited from parent — see [AGENTS.md](../AGENTS.md) (meta-
 
 ## Module map
 
-- `core` — domain: entities and ports (`Node`, `NodeId`, `Position`). Plain `java-library` (Lombok, JUnit 5 + AssertJ). No Spring or DB — unit-testable without context.
-- `api` — Spring Boot REST adapter. **Not created yet.** When scaffolded, update this entry with module details and add `:api:test` to the build commands above.
+- `core` — domain: entities and ports (`Node`, `NodeId`, `Position`). Plain `java-library` (Lombok, JUnit 5 + AssertJ). No Spring or DB — unit-testable without context. New `Node` mutators follow ADR-007's pure-function shape — return a new instance, stamp `updatedAt`, return `this` on no-op ([ADR 007](../docs/adr/007-immutable-node-entity.md)).
+- `api` — Spring Boot REST adapter. **Not created yet.**
 
 ## Stack notes
 

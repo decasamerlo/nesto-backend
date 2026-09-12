@@ -69,4 +69,23 @@ ADR 009 already accepted exactly this trade for the shared deletion instant.
 
 ## Verdict
 
-_(to be filled in on nesto#64)_
+**A.** Recorded as ADR 011 in decasamerlo/nesto#71; resolution on decasamerlo/nesto#64.
+
+**B was struck** for the reason above — and for a second one found while writing it: a
+mapper-built entity always has a null version, so `isNew()` is always true and every save
+would `persist()`. B does not compose with the hand-rolled mapper ADR 010 chose.
+
+**A beat D** on exposure, not on principle. A use case per operation carries intent and
+reloads server-side, so a client's stale copy never reaches the database: the window is the
+overlap between two in-flight requests, and the damage is one field of one node reverting.
+Moving to D later needs **no data migration**, because `updated_at` is written from day one
+either way — A simply does not read it.
+
+**D is the option to reach for if writes stop being intent-shaped.** That condition, plus
+the knowingly-accepted live-orphan race (decasamerlo/nesto#70), are recorded in ADR 011 as
+the triggers that reopen this.
+
+An earlier draft of the failure scenario was wrong and is worth not repeating: adding a node
+to a list and ticking a different node are writes to two different rows, so they cannot
+clobber each other. Children are a query, not a stored collection. The real lost update
+needs both clients writing the *same* node.

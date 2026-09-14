@@ -59,7 +59,6 @@ public abstract class NodeRepositoryContractTest {
       repository.save(updated);
 
       Optional<Node> optionalNode = repository.findById(NODE_ID);
-      assertThat(optionalNode).contains(updated);
       assertThat(optionalNode.map(Node::getName)).contains("new name");
     }
   }

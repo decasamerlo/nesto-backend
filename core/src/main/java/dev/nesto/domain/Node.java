@@ -11,6 +11,12 @@ import lombok.Getter;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Node {
 
+  public enum Status {
+    OPEN,
+    IN_PROGRESS,
+    DONE
+  }
+
   @EqualsAndHashCode.Include private final NodeId id;
   private final String name;
   private final String description;
@@ -26,6 +32,12 @@ public class Node {
   @Getter(AccessLevel.NONE)
   private final Instant deletedAt;
 
+  @Getter(AccessLevel.NONE)
+  private final Status status;
+
+  @Getter(AccessLevel.NONE)
+  private final Instant completedAt;
+
   private Node(
       NodeId id,
       String name,
@@ -34,7 +46,9 @@ public class Node {
       Position position,
       Instant createdAt,
       Instant updatedAt,
-      Instant deletedAt) {
+      Instant deletedAt,
+      Status status,
+      Instant completedAt) {
     this.id = Objects.requireNonNull(id, "id must not be null");
     this.name = Objects.requireNonNull(name, "name must not be null");
     if (name.isBlank()) {
@@ -46,6 +60,8 @@ public class Node {
     this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
     this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt must not be null");
     this.deletedAt = deletedAt;
+    this.status = status;
+    this.completedAt = completedAt;
     if (parentId != null && parentId.equals(id)) {
       throw new IllegalArgumentException("parentId must not equal id");
     }
@@ -59,6 +75,14 @@ public class Node {
     return Optional.ofNullable(deletedAt);
   }
 
+  public Optional<Status> getStatus() {
+    return Optional.ofNullable(status);
+  }
+
+  public Optional<Instant> getCompletedAt() {
+    return Optional.ofNullable(completedAt);
+  }
+
   public static Node create(
       NodeId id,
       String name,
@@ -69,7 +93,8 @@ public class Node {
     Objects.requireNonNull(parentId, "parentId must not be null");
     Objects.requireNonNull(now, "now must not be null");
 
-    return new Node(id, name, description, parentId.orElse(null), position, now, now, null);
+    return new Node(
+        id, name, description, parentId.orElse(null), position, now, now, null, null, null);
   }
 
   public Node rename(String newName, Instant now) {
@@ -96,6 +121,19 @@ public class Node {
     return copyWith(this.name, newDescription, now);
   }
 
+  public Node withStatus(Optional<Status> newStatus, Instant now) {
+    Objects.requireNonNull(newStatus, "status must not be null");
+    Objects.requireNonNull(now, "now must not be null");
+
+    Status target = newStatus.orElse(null);
+
+    if (Objects.equals(target, this.status)) {
+      return this;
+    }
+
+    return copyWithStatus(target, Status.DONE.equals(target) ? now : null, now);
+  }
+
   public static Node reconstitute(
       NodeId id,
       String name,
@@ -104,9 +142,21 @@ public class Node {
       Position position,
       Instant createdAt,
       Instant updatedAt,
-      Instant deletedAt) {
+      Instant deletedAt,
+      Status status,
+      Instant completedAt) {
 
-    return new Node(id, name, description, parentId, position, createdAt, updatedAt, deletedAt);
+    return new Node(
+        id,
+        name,
+        description,
+        parentId,
+        position,
+        createdAt,
+        updatedAt,
+        deletedAt,
+        status,
+        completedAt);
   }
 
   private Node copyWith(String name, String description, Instant updatedAt) {
@@ -118,6 +168,22 @@ public class Node {
         this.position,
         this.createdAt,
         updatedAt,
-        this.deletedAt);
+        this.deletedAt,
+        this.status,
+        this.completedAt);
+  }
+
+  private Node copyWithStatus(Status status, Instant completedAt, Instant updatedAt) {
+    return new Node(
+        this.id,
+        this.name,
+        this.description,
+        this.parentId,
+        this.position,
+        this.createdAt,
+        updatedAt,
+        this.deletedAt,
+        status,
+        completedAt);
   }
 }

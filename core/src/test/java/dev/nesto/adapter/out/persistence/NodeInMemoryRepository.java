@@ -103,6 +103,8 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
         node.getPosition(),
         node.getCreatedAt(),
         node.getUpdatedAt(),
-        deletedAt);
+        deletedAt,
+        node.getStatus().orElse(null),
+        node.getCompletedAt().orElse(null));
   }
 }

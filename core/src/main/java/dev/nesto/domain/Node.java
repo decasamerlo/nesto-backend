@@ -3,7 +3,6 @@ package dev.nesto.domain;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
-
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -24,6 +23,9 @@ public class Node {
   private final Instant createdAt;
   private final Instant updatedAt;
 
+  @Getter(AccessLevel.NONE)
+  private final Instant deletedAt;
+
   private Node(
       NodeId id,
       String name,
@@ -31,7 +33,8 @@ public class Node {
       NodeId parentId,
       Position position,
       Instant createdAt,
-      Instant updatedAt) {
+      Instant updatedAt,
+      Instant deletedAt) {
     this.id = Objects.requireNonNull(id, "id must not be null");
     this.name = Objects.requireNonNull(name, "name must not be null");
     if (name.isBlank()) {
@@ -42,6 +45,7 @@ public class Node {
     this.position = Objects.requireNonNull(position, "position must not be null");
     this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
     this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt must not be null");
+    this.deletedAt = deletedAt;
     if (parentId != null && parentId.equals(id)) {
       throw new IllegalArgumentException("parentId must not equal id");
     }
@@ -49,6 +53,10 @@ public class Node {
 
   public Optional<NodeId> getParentId() {
     return Optional.ofNullable(parentId);
+  }
+
+  public Optional<Instant> getDeletedAt() {
+    return Optional.ofNullable(deletedAt);
   }
 
   public static Node create(
@@ -61,7 +69,7 @@ public class Node {
     Objects.requireNonNull(parentId, "parentId must not be null");
     Objects.requireNonNull(now, "now must not be null");
 
-    return new Node(id, name, description, parentId.orElse(null), position, now, now);
+    return new Node(id, name, description, parentId.orElse(null), position, now, now, null);
   }
 
   public Node rename(String newName, Instant now) {
@@ -95,13 +103,21 @@ public class Node {
       NodeId parentId,
       Position position,
       Instant createdAt,
-      Instant updatedAt) {
+      Instant updatedAt,
+      Instant deletedAt) {
 
-    return new Node(id, name, description, parentId, position, createdAt, updatedAt);
+    return new Node(id, name, description, parentId, position, createdAt, updatedAt, deletedAt);
   }
 
   private Node copyWith(String name, String description, Instant updatedAt) {
     return new Node(
-        this.id, name, description, this.parentId, this.position, this.createdAt, updatedAt);
+        this.id,
+        name,
+        description,
+        this.parentId,
+        this.position,
+        this.createdAt,
+        updatedAt,
+        this.deletedAt);
   }
 }

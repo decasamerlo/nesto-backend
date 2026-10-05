@@ -1,5 +1,6 @@
 plugins {
   `java-library`
+  `java-test-fixtures`
 }
 
 group = "dev.nesto"
@@ -26,6 +27,10 @@ dependencies {
 
   testRuntimeOnly(platform(libs.junit.bom))
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+  testFixturesApi(platform(libs.junit.bom))
+  testFixturesApi(libs.junit.jupiter)
+  testFixturesApi(libs.assertj.core)
 }
 
 tasks.withType<Test> {

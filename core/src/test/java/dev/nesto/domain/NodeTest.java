@@ -9,6 +9,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class NodeTest {
 
@@ -19,6 +21,7 @@ class NodeTest {
   private static final Instant NOW = Instant.parse("2026-01-01T01:00:00Z");
   private static final Instant LATER = Instant.parse("2026-01-02T01:00:00Z");
   private static final Instant DELETED_AT = Instant.parse("2026-01-03T01:00:00Z");
+  private static final Instant COMPLETED_AT = Instant.parse("2026-01-04T01:00:00Z");
 
   @Nested
   @DisplayName("Node.create")
@@ -124,7 +127,7 @@ class NodeTest {
     @Test
     @DisplayName("should return new node with new name, stamped updatedAt and original fields")
     void should_return_new_node_with_new_name_stamped_updated_at_and_original_fields() {
-      var original = deletedNode();
+      var original = populatedNode();
       var newName = "new name";
 
       var renamed = original.rename(newName, LATER);
@@ -194,7 +197,7 @@ class NodeTest {
     @DisplayName(
         "should return new node with new description, stamped updatedAt and original fields")
     void should_return_new_node_with_new_description_stamped_updated_at_and_original_fields() {
-      var original = deletedNode();
+      var original = populatedNode();
       var newDescription = "new description";
 
       var changed = original.changeDescription(newDescription, LATER);
@@ -252,6 +255,113 @@ class NodeTest {
   }
 
   @Nested
+  @DisplayName("Node.withStatus")
+  class WithStatus {
+
+    @ParameterizedTest(name = "{0} -> {1}")
+    @DisplayName("should accept every effective transition")
+    @CsvSource(
+        nullValues = "untracked",
+        value = {
+          "untracked, OPEN",
+          "untracked, IN_PROGRESS",
+          "untracked, DONE",
+          "OPEN, untracked",
+          "OPEN, IN_PROGRESS",
+          "OPEN, DONE",
+          "IN_PROGRESS, untracked",
+          "IN_PROGRESS, OPEN",
+          "IN_PROGRESS, DONE",
+          "DONE, untracked",
+          "DONE, OPEN",
+          "DONE, IN_PROGRESS",
+        })
+    void should_accept_every_effective_transition(Node.Status from, Node.Status to) {
+      var original = nodeWith(from);
+
+      var updated = original.withStatus(Optional.ofNullable(to), LATER);
+
+      assertThat(updated).isNotSameAs(original);
+      assertThat(updated.getStatus()).isEqualTo(Optional.ofNullable(to));
+      assertThat(updated.getUpdatedAt()).isEqualTo(LATER);
+      assertThat(updated)
+          .usingRecursiveComparison()
+          .ignoringFields("status", "completedAt", "updatedAt")
+          .isEqualTo(original);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("should return same instance when status unchanged")
+    @CsvSource(
+        nullValues = "untracked",
+        value = {"untracked", "OPEN", "IN_PROGRESS", "DONE"})
+    void should_return_same_instance_when_status_unchanged(Node.Status status) {
+      var original = nodeWith(status);
+
+      var updated = original.withStatus(Optional.ofNullable(status), LATER);
+
+      assertThat(updated).isSameAs(original);
+      assertThat(updated.getUpdatedAt()).isEqualTo(NOW);
+    }
+
+    @ParameterizedTest(name = "{0} -> DONE")
+    @DisplayName("should set completedAt when entering DONE")
+    @CsvSource(
+        nullValues = "untracked",
+        value = {"untracked", "OPEN", "IN_PROGRESS"})
+    void should_set_completed_at_when_entering_done(Node.Status from) {
+      var original = nodeWith(from);
+
+      var updated = original.withStatus(Optional.of(Node.Status.DONE), LATER);
+
+      assertThat(updated.getCompletedAt()).hasValue(LATER);
+    }
+
+    @ParameterizedTest(name = "DONE -> {0}")
+    @DisplayName("should clear completedAt when leaving DONE")
+    @CsvSource(
+        nullValues = "untracked",
+        value = {"untracked", "OPEN", "IN_PROGRESS"})
+    void should_clear_completed_at_when_leaving_done(Node.Status to) {
+      var original = nodeWith(Node.Status.DONE);
+      assertThat(original.getCompletedAt()).isNotEmpty();
+
+      var updated = original.withStatus(Optional.ofNullable(to), LATER);
+
+      assertThat(updated.getCompletedAt()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("should leave original node untouched")
+    void should_leave_original_node_untouched() {
+      var node = nodeWith(Node.Status.OPEN);
+
+      node.withStatus(Optional.of(Node.Status.DONE), LATER);
+
+      assertThat(node.getStatus()).hasValue(Node.Status.OPEN);
+      assertThat(node.getCompletedAt()).isEmpty();
+      assertThat(node.getUpdatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    @DisplayName("should reject null status")
+    void should_reject_null_status() {
+      var node = createNode();
+
+      assertThatNullPointerException().isThrownBy(() -> node.withStatus(null, LATER));
+    }
+
+    @Test
+    @DisplayName("should reject null now")
+    void should_reject_null_now() {
+      var node = createNode();
+
+      assertThatNullPointerException()
+          .isThrownBy(() -> node.withStatus(Optional.of(Node.Status.DONE), null));
+    }
+  }
+
+  @Nested
   @DisplayName("Node.reconstitute")
   class Reconstitute {
 
@@ -259,7 +369,17 @@ class NodeTest {
     @DisplayName("should rebuild root node with explicit timestamps")
     void should_rebuild_root_node_with_explicit_timestamps() {
       var node =
-          Node.reconstitute(NODE_ID, NAME, DESCRIPTION, null, POSITION, NOW, LATER, DELETED_AT);
+          Node.reconstitute(
+              NODE_ID,
+              NAME,
+              DESCRIPTION,
+              null,
+              POSITION,
+              NOW,
+              LATER,
+              DELETED_AT,
+              Node.Status.DONE,
+              COMPLETED_AT);
 
       assertThat(node.getId()).isEqualTo(NODE_ID);
       assertThat(node.getName()).isEqualTo(NAME);
@@ -269,6 +389,8 @@ class NodeTest {
       assertThat(node.getCreatedAt()).isEqualTo(NOW);
       assertThat(node.getUpdatedAt()).isEqualTo(LATER);
       assertThat(node.getDeletedAt()).hasValue(DELETED_AT);
+      assertThat(node.getStatus()).hasValue(Node.Status.DONE);
+      assertThat(node.getCompletedAt()).hasValue(COMPLETED_AT);
     }
 
     @Test
@@ -284,6 +406,8 @@ class NodeTest {
               POSITION,
               NOW,
               LATER,
+              null,
+              null,
               null);
 
       assertThat(child.getParentId()).contains(parent.getId());
@@ -293,7 +417,10 @@ class NodeTest {
     @DisplayName("should reject null id")
     void should_reject_null_id() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.reconstitute(null, NAME, null, null, POSITION, NOW, LATER, null));
+          .isThrownBy(
+              () ->
+                  Node.reconstitute(
+                      null, NAME, null, null, POSITION, NOW, LATER, null, null, null));
     }
 
     @Test
@@ -301,7 +428,9 @@ class NodeTest {
     void should_reject_null_name() {
       assertThatNullPointerException()
           .isThrownBy(
-              () -> Node.reconstitute(NODE_ID, null, null, null, POSITION, NOW, LATER, null));
+              () ->
+                  Node.reconstitute(
+                      NODE_ID, null, null, null, POSITION, NOW, LATER, null, null, null));
     }
 
     @Test
@@ -309,7 +438,9 @@ class NodeTest {
     void should_reject_blank_name() {
       assertThatIllegalArgumentException()
           .isThrownBy(
-              () -> Node.reconstitute(NODE_ID, "   ", null, null, POSITION, NOW, LATER, null));
+              () ->
+                  Node.reconstitute(
+                      NODE_ID, "   ", null, null, POSITION, NOW, LATER, null, null, null));
     }
 
     @Test
@@ -317,14 +448,18 @@ class NodeTest {
     void should_reject_self_referential_parent() {
       assertThatIllegalArgumentException()
           .isThrownBy(
-              () -> Node.reconstitute(NODE_ID, NAME, null, NODE_ID, POSITION, NOW, LATER, null));
+              () ->
+                  Node.reconstitute(
+                      NODE_ID, NAME, null, NODE_ID, POSITION, NOW, LATER, null, null, null));
     }
 
     @Test
     @DisplayName("should reject null position")
     void should_reject_null_position() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.reconstitute(NODE_ID, NAME, null, null, null, NOW, LATER, null));
+          .isThrownBy(
+              () ->
+                  Node.reconstitute(NODE_ID, NAME, null, null, null, NOW, LATER, null, null, null));
     }
 
     @Test
@@ -332,7 +467,9 @@ class NodeTest {
     void should_reject_null_created_at() {
       assertThatNullPointerException()
           .isThrownBy(
-              () -> Node.reconstitute(NODE_ID, NAME, null, null, POSITION, null, LATER, null));
+              () ->
+                  Node.reconstitute(
+                      NODE_ID, NAME, null, null, POSITION, null, LATER, null, null, null));
     }
 
     @Test
@@ -340,7 +477,9 @@ class NodeTest {
     void should_reject_null_updated_at() {
       assertThatNullPointerException()
           .isThrownBy(
-              () -> Node.reconstitute(NODE_ID, NAME, null, null, POSITION, NOW, null, null));
+              () ->
+                  Node.reconstitute(
+                      NODE_ID, NAME, null, null, POSITION, NOW, null, null, null, null));
     }
   }
 
@@ -383,8 +522,35 @@ class NodeTest {
     return Node.create(NODE_ID, NAME, DESCRIPTION, Optional.empty(), POSITION, NOW);
   }
 
-  /** Deleted, so the recursive comparisons can catch a copyWith that drops deletedAt */
-  private static Node deletedNode() {
-    return Node.reconstitute(NODE_ID, NAME, DESCRIPTION, null, POSITION, NOW, NOW, DELETED_AT);
+  /**
+   * Every nullable field populated, so the recursive comparisons can catch a copyWith that drops
+   * one
+   */
+  private static Node populatedNode() {
+    return Node.reconstitute(
+        NODE_ID,
+        NAME,
+        DESCRIPTION,
+        null,
+        POSITION,
+        NOW,
+        NOW,
+        DELETED_AT,
+        Node.Status.DONE,
+        COMPLETED_AT);
+  }
+
+  private static Node nodeWith(Node.Status status) {
+    return Node.reconstitute(
+        NODE_ID,
+        NAME,
+        DESCRIPTION,
+        null,
+        POSITION,
+        NOW,
+        NOW,
+        null,
+        status,
+        status == Node.Status.DONE ? COMPLETED_AT : null);
   }
 }

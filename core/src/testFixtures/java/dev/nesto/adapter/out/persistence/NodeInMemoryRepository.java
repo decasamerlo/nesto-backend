@@ -22,7 +22,19 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
 
   @Override
   public void save(Node node) {
-    nodes.put(node.getId(), node);
+    if (node.getDeletedAt().isPresent()) {
+      throw new IllegalArgumentException("node must not have deletedAt");
+    }
+
+    if (node.getParentId().isPresent() && !nodes.containsKey(node.getParentId().get())) {
+      throw new IllegalStateException("parentId not found");
+    }
+
+    if (nodes.containsKey(node.getId()) && nodes.get(node.getId()).getDeletedAt().isPresent()) {
+      throw new IllegalStateException("node must not be deleted");
+    }
+
+    put(node);
   }
 
   @Override
@@ -43,7 +55,7 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
   @Override
   public int softDeleteSubtree(NodeId rootId, Instant deletedAt) {
     List<Node> toStamp = subtreeOf(rootId).stream().filter(ACTIVE).toList();
-    toStamp.forEach(node -> save(withDeletedAt(node, deletedAt)));
+    toStamp.forEach(node -> put(withDeletedAt(node, deletedAt)));
     return toStamp.size();
   }
 
@@ -53,7 +65,7 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
         subtreeOf(rootId).stream()
             .filter(n -> n.getDeletedAt().filter(deletedAt::equals).isPresent())
             .toList();
-    toClear.forEach(node -> save(withDeletedAt(node, null)));
+    toClear.forEach(node -> put(withDeletedAt(node, null)));
     return toClear.size();
   }
 
@@ -106,5 +118,9 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
         deletedAt,
         node.getStatus().orElse(null),
         node.getCompletedAt().orElse(null));
+  }
+
+  private void put(Node node) {
+    nodes.put(node.getId(), node);
   }
 }

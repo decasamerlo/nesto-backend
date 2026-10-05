@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,14 +15,10 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class NodeTest {
 
-  private static final NodeId NODE_ID = NodeId.of("node");
-  private static final String NAME = "default name";
-  private static final String DESCRIPTION = "default description";
-  private static final Position POSITION = Position.of(0);
-  private static final Instant NOW = Instant.parse("2026-01-01T01:00:00Z");
-  private static final Instant LATER = Instant.parse("2026-01-02T01:00:00Z");
-  private static final Instant DELETED_AT = Instant.parse("2026-01-03T01:00:00Z");
-  private static final Instant COMPLETED_AT = Instant.parse("2026-01-04T01:00:00Z");
+  // Later than every NodeMother instant by construction, so no fixture value can equal an operation
+  // instant
+  private static final Instant NOW = NodeMother.DELETED_AT.plus(1, ChronoUnit.DAYS);
+  private static final Instant LATER = NOW.plus(1, ChronoUnit.DAYS);
 
   @Nested
   @DisplayName("Node.create")
@@ -30,13 +27,20 @@ class NodeTest {
     @Test
     @DisplayName("should create root node with the given fields")
     void should_create_root_node_with_the_given_fields() {
-      var node = createNode();
+      var node =
+          Node.create(
+              NodeMother.NODE_ID,
+              NodeMother.NAME,
+              NodeMother.DESCRIPTION,
+              Optional.empty(),
+              NodeMother.POSITION,
+              NOW);
 
-      assertThat(node.getId()).isEqualTo(NODE_ID);
-      assertThat(node.getName()).isEqualTo(NAME);
-      assertThat(node.getDescription()).isEqualTo(DESCRIPTION);
+      assertThat(node.getId()).isEqualTo(NodeMother.NODE_ID);
+      assertThat(node.getName()).isEqualTo(NodeMother.NAME);
+      assertThat(node.getDescription()).isEqualTo(NodeMother.DESCRIPTION);
       assertThat(node.getParentId()).isEmpty();
-      assertThat(node.getPosition()).isEqualTo(POSITION);
+      assertThat(node.getPosition()).isEqualTo(NodeMother.POSITION);
       assertThat(node.getCreatedAt()).isEqualTo(NOW);
       assertThat(node.getUpdatedAt()).isEqualTo(NOW);
       assertThat(node.getDeletedAt()).isEmpty();
@@ -45,7 +49,14 @@ class NodeTest {
     @Test
     @DisplayName("should create node without a description")
     void should_create_node_without_a_description() {
-      var node = Node.create(NODE_ID, NAME, null, Optional.empty(), POSITION, NOW);
+      var node =
+          Node.create(
+              NodeMother.NODE_ID,
+              NodeMother.NAME,
+              null,
+              Optional.empty(),
+              NodeMother.POSITION,
+              NOW);
 
       assertThat(node.getDescription()).isNull();
     }
@@ -53,14 +64,14 @@ class NodeTest {
     @Test
     @DisplayName("should create node under an existing parent")
     void should_create_node_under_an_existing_parent() {
-      var parent = createNode();
+      var parent = NodeMother.aNode().build();
       var child =
           Node.create(
-              NodeId.of("child-node"),
+              NodeMother.CHILD_ID,
               "child node",
-              DESCRIPTION,
+              null,
               Optional.of(parent.getId()),
-              POSITION,
+              NodeMother.POSITION,
               NOW);
 
       assertThat(child.getParentId()).contains(parent.getId());
@@ -70,7 +81,10 @@ class NodeTest {
     @DisplayName("should reject null id")
     void should_reject_null_id() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.create(null, NAME, DESCRIPTION, Optional.empty(), POSITION, NOW));
+          .isThrownBy(
+              () ->
+                  Node.create(
+                      null, NodeMother.NAME, null, Optional.empty(), NodeMother.POSITION, NOW));
     }
 
     @Test
@@ -78,7 +92,9 @@ class NodeTest {
     void should_reject_null_name() {
       assertThatNullPointerException()
           .isThrownBy(
-              () -> Node.create(NODE_ID, null, DESCRIPTION, Optional.empty(), POSITION, NOW));
+              () ->
+                  Node.create(
+                      NodeMother.NODE_ID, null, null, Optional.empty(), NodeMother.POSITION, NOW));
     }
 
     @Test
@@ -86,14 +102,19 @@ class NodeTest {
     void should_reject_blank_name() {
       assertThatIllegalArgumentException()
           .isThrownBy(
-              () -> Node.create(NODE_ID, "   ", DESCRIPTION, Optional.empty(), POSITION, NOW));
+              () ->
+                  Node.create(
+                      NodeMother.NODE_ID, "   ", null, Optional.empty(), NodeMother.POSITION, NOW));
     }
 
     @Test
     @DisplayName("should reject null parentId")
     void should_reject_null_parent_id() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.create(NODE_ID, NAME, DESCRIPTION, null, POSITION, NOW));
+          .isThrownBy(
+              () ->
+                  Node.create(
+                      NodeMother.NODE_ID, NodeMother.NAME, null, null, NodeMother.POSITION, NOW));
     }
 
     @Test
@@ -101,14 +122,24 @@ class NodeTest {
     void should_reject_self_referential_parent() {
       assertThatIllegalArgumentException()
           .isThrownBy(
-              () -> Node.create(NODE_ID, NAME, DESCRIPTION, Optional.of(NODE_ID), POSITION, NOW));
+              () ->
+                  Node.create(
+                      NodeMother.NODE_ID,
+                      NodeMother.NAME,
+                      null,
+                      Optional.of(NodeMother.NODE_ID),
+                      NodeMother.POSITION,
+                      NOW));
     }
 
     @Test
     @DisplayName("should reject null position")
     void should_reject_null_position() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.create(NODE_ID, NAME, DESCRIPTION, Optional.empty(), null, NOW));
+          .isThrownBy(
+              () ->
+                  Node.create(
+                      NodeMother.NODE_ID, NodeMother.NAME, null, Optional.empty(), null, NOW));
     }
 
     @Test
@@ -116,7 +147,14 @@ class NodeTest {
     void should_reject_null_now() {
       assertThatNullPointerException()
           .isThrownBy(
-              () -> Node.create(NODE_ID, NAME, DESCRIPTION, Optional.empty(), POSITION, null));
+              () ->
+                  Node.create(
+                      NodeMother.NODE_ID,
+                      NodeMother.NAME,
+                      null,
+                      Optional.empty(),
+                      NodeMother.POSITION,
+                      null));
     }
   }
 
@@ -127,7 +165,7 @@ class NodeTest {
     @Test
     @DisplayName("should return new node with new name, stamped updatedAt and original fields")
     void should_return_new_node_with_new_name_stamped_updated_at_and_original_fields() {
-      var original = populatedNode();
+      var original = NodeMother.aChildNode().status(Node.Status.DONE).deleted().build();
       var newName = "new name";
 
       var renamed = original.rename(newName, LATER);
@@ -144,48 +182,48 @@ class NodeTest {
     @Test
     @DisplayName("should leave original node untouched")
     void should_leave_original_node_untouched() {
-      var node = createNode();
+      var node = NodeMother.aNode().build();
 
       node.rename("new name", LATER);
 
-      assertThat(node.getName()).isEqualTo(NAME);
-      assertThat(node.getUpdatedAt()).isEqualTo(NOW);
+      assertThat(node.getName()).isEqualTo(NodeMother.NAME);
+      assertThat(node.getUpdatedAt()).isEqualTo(NodeMother.UPDATED_AT);
     }
 
     @Test
     @DisplayName("should reject null name")
     void should_reject_null_name() {
-      var node = createNode();
+      var node = NodeMother.aNode().build();
 
-      assertThatNullPointerException().isThrownBy(() -> node.rename(null, NOW));
+      assertThatNullPointerException().isThrownBy(() -> node.rename(null, LATER));
     }
 
     @Test
     @DisplayName("should reject blank name")
     void should_reject_blank_name() {
-      var node = createNode();
+      var node = NodeMother.aNode().build();
 
-      assertThatIllegalArgumentException().isThrownBy(() -> node.rename("   ", NOW));
+      assertThatIllegalArgumentException().isThrownBy(() -> node.rename("   ", LATER));
     }
 
     @Test
     @DisplayName("should reject null now")
     void should_reject_null_now() {
-      var node = createNode();
+      var node = NodeMother.aNode().build();
 
-      assertThatNullPointerException().isThrownBy(() -> node.rename(NAME, null));
+      assertThatNullPointerException().isThrownBy(() -> node.rename("new name", null));
     }
 
     @Test
     @DisplayName("should return same instance when name unchanged")
     void should_return_same_instance_when_name_unchanged() {
-      var original = createNode();
+      var original = NodeMother.aNode().build();
 
-      var renamed = original.rename(NAME, LATER);
+      var renamed = original.rename(NodeMother.NAME, LATER);
 
       assertThat(renamed).isSameAs(original);
-      assertThat(renamed.getName()).isEqualTo(NAME);
-      assertThat(renamed.getUpdatedAt()).isEqualTo(NOW);
+      assertThat(renamed.getName()).isEqualTo(NodeMother.NAME);
+      assertThat(renamed.getUpdatedAt()).isEqualTo(NodeMother.UPDATED_AT);
     }
   }
 
@@ -197,7 +235,7 @@ class NodeTest {
     @DisplayName(
         "should return new node with new description, stamped updatedAt and original fields")
     void should_return_new_node_with_new_description_stamped_updated_at_and_original_fields() {
-      var original = populatedNode();
+      var original = NodeMother.aChildNode().status(Node.Status.DONE).deleted().build();
       var newDescription = "new description";
 
       var changed = original.changeDescription(newDescription, LATER);
@@ -214,26 +252,27 @@ class NodeTest {
     @Test
     @DisplayName("should leave original node untouched")
     void should_leave_original_node_untouched() {
-      var node = createNode();
+      var node = NodeMother.aNode().build();
 
       node.changeDescription("new description", LATER);
 
-      assertThat(node.getDescription()).isEqualTo(DESCRIPTION);
-      assertThat(node.getUpdatedAt()).isEqualTo(NOW);
+      assertThat(node.getDescription()).isEqualTo(NodeMother.DESCRIPTION);
+      assertThat(node.getUpdatedAt()).isEqualTo(NodeMother.UPDATED_AT);
     }
 
     @Test
     @DisplayName("should reject null now")
     void should_reject_null_now() {
-      var node = createNode();
+      var node = NodeMother.aNode().build();
 
-      assertThatNullPointerException().isThrownBy(() -> node.changeDescription(DESCRIPTION, null));
+      assertThatNullPointerException()
+          .isThrownBy(() -> node.changeDescription(NodeMother.DESCRIPTION, null));
     }
 
     @Test
     @DisplayName("should clear description when set to null")
     void should_clear_description_when_set_to_null() {
-      var original = createNode();
+      var original = NodeMother.aNode().build();
 
       var changed = original.changeDescription(null, LATER);
 
@@ -244,13 +283,13 @@ class NodeTest {
     @Test
     @DisplayName("should return same instance when description unchanged")
     void should_return_same_instance_when_description_unchanged() {
-      var original = createNode();
+      var original = NodeMother.aNode().build();
 
-      var changed = original.changeDescription(DESCRIPTION, LATER);
+      var changed = original.changeDescription(NodeMother.DESCRIPTION, LATER);
 
       assertThat(changed).isSameAs(original);
-      assertThat(changed.getDescription()).isEqualTo(DESCRIPTION);
-      assertThat(changed.getUpdatedAt()).isEqualTo(NOW);
+      assertThat(changed.getDescription()).isEqualTo(NodeMother.DESCRIPTION);
+      assertThat(changed.getUpdatedAt()).isEqualTo(NodeMother.UPDATED_AT);
     }
   }
 
@@ -277,7 +316,7 @@ class NodeTest {
           "DONE, IN_PROGRESS",
         })
     void should_accept_every_effective_transition(Node.Status from, Node.Status to) {
-      var original = nodeWith(from);
+      var original = NodeMother.aChildNode().deleted().status(from).build();
 
       var updated = original.withStatus(Optional.ofNullable(to), LATER);
 
@@ -296,12 +335,12 @@ class NodeTest {
         nullValues = "untracked",
         value = {"untracked", "OPEN", "IN_PROGRESS", "DONE"})
     void should_return_same_instance_when_status_unchanged(Node.Status status) {
-      var original = nodeWith(status);
+      var original = NodeMother.aNode().status(status).build();
 
       var updated = original.withStatus(Optional.ofNullable(status), LATER);
 
       assertThat(updated).isSameAs(original);
-      assertThat(updated.getUpdatedAt()).isEqualTo(NOW);
+      assertThat(updated.getUpdatedAt()).isEqualTo(NodeMother.UPDATED_AT);
     }
 
     @ParameterizedTest(name = "{0} -> DONE")
@@ -310,7 +349,7 @@ class NodeTest {
         nullValues = "untracked",
         value = {"untracked", "OPEN", "IN_PROGRESS"})
     void should_set_completed_at_when_entering_done(Node.Status from) {
-      var original = nodeWith(from);
+      var original = NodeMother.aNode().status(from).build();
 
       var updated = original.withStatus(Optional.of(Node.Status.DONE), LATER);
 
@@ -323,7 +362,7 @@ class NodeTest {
         nullValues = "untracked",
         value = {"untracked", "OPEN", "IN_PROGRESS"})
     void should_clear_completed_at_when_leaving_done(Node.Status to) {
-      var original = nodeWith(Node.Status.DONE);
+      var original = NodeMother.aNode().status(Node.Status.DONE).build();
       assertThat(original.getCompletedAt()).isNotEmpty();
 
       var updated = original.withStatus(Optional.ofNullable(to), LATER);
@@ -334,19 +373,19 @@ class NodeTest {
     @Test
     @DisplayName("should leave original node untouched")
     void should_leave_original_node_untouched() {
-      var node = nodeWith(Node.Status.OPEN);
+      var node = NodeMother.aNode().status(Node.Status.OPEN).build();
 
       node.withStatus(Optional.of(Node.Status.DONE), LATER);
 
       assertThat(node.getStatus()).hasValue(Node.Status.OPEN);
       assertThat(node.getCompletedAt()).isEmpty();
-      assertThat(node.getUpdatedAt()).isEqualTo(NOW);
+      assertThat(node.getUpdatedAt()).isEqualTo(NodeMother.UPDATED_AT);
     }
 
     @Test
     @DisplayName("should reject null status")
     void should_reject_null_status() {
-      var node = createNode();
+      var node = NodeMother.aNode().build();
 
       assertThatNullPointerException().isThrownBy(() -> node.withStatus(null, LATER));
     }
@@ -354,7 +393,7 @@ class NodeTest {
     @Test
     @DisplayName("should reject null now")
     void should_reject_null_now() {
-      var node = createNode();
+      var node = NodeMother.aNode().build();
 
       assertThatNullPointerException()
           .isThrownBy(() -> node.withStatus(Optional.of(Node.Status.DONE), null));
@@ -370,42 +409,42 @@ class NodeTest {
     void should_rebuild_root_node_with_explicit_timestamps() {
       var node =
           Node.reconstitute(
-              NODE_ID,
-              NAME,
-              DESCRIPTION,
+              NodeMother.NODE_ID,
+              NodeMother.NAME,
+              NodeMother.DESCRIPTION,
               null,
-              POSITION,
-              NOW,
-              LATER,
-              DELETED_AT,
+              NodeMother.POSITION,
+              NodeMother.CREATED_AT,
+              NodeMother.UPDATED_AT,
+              NodeMother.DELETED_AT,
               Node.Status.DONE,
-              COMPLETED_AT);
+              NodeMother.COMPLETED_AT);
 
-      assertThat(node.getId()).isEqualTo(NODE_ID);
-      assertThat(node.getName()).isEqualTo(NAME);
-      assertThat(node.getDescription()).isEqualTo(DESCRIPTION);
+      assertThat(node.getId()).isEqualTo(NodeMother.NODE_ID);
+      assertThat(node.getName()).isEqualTo(NodeMother.NAME);
+      assertThat(node.getDescription()).isEqualTo(NodeMother.DESCRIPTION);
       assertThat(node.getParentId()).isEmpty();
-      assertThat(node.getPosition()).isEqualTo(POSITION);
-      assertThat(node.getCreatedAt()).isEqualTo(NOW);
-      assertThat(node.getUpdatedAt()).isEqualTo(LATER);
-      assertThat(node.getDeletedAt()).hasValue(DELETED_AT);
+      assertThat(node.getPosition()).isEqualTo(NodeMother.POSITION);
+      assertThat(node.getCreatedAt()).isEqualTo(NodeMother.CREATED_AT);
+      assertThat(node.getUpdatedAt()).isEqualTo(NodeMother.UPDATED_AT);
+      assertThat(node.getDeletedAt()).hasValue(NodeMother.DELETED_AT);
       assertThat(node.getStatus()).hasValue(Node.Status.DONE);
-      assertThat(node.getCompletedAt()).hasValue(COMPLETED_AT);
+      assertThat(node.getCompletedAt()).hasValue(NodeMother.COMPLETED_AT);
     }
 
     @Test
     @DisplayName("should rebuild child node with parent")
     void should_rebuild_child_node_with_parent() {
-      var parent = createNode();
+      var parent = NodeMother.aNode().build();
       var child =
           Node.reconstitute(
-              NodeId.of("child-node"),
-              "child node",
+              NodeMother.CHILD_ID,
+              NodeMother.NAME,
               null,
               parent.getId(),
-              POSITION,
-              NOW,
-              LATER,
+              NodeMother.POSITION,
+              NodeMother.CREATED_AT,
+              NodeMother.UPDATED_AT,
               null,
               null,
               null);
@@ -420,7 +459,16 @@ class NodeTest {
           .isThrownBy(
               () ->
                   Node.reconstitute(
-                      null, NAME, null, null, POSITION, NOW, LATER, null, null, null));
+                      null,
+                      NodeMother.NAME,
+                      null,
+                      null,
+                      NodeMother.POSITION,
+                      NodeMother.CREATED_AT,
+                      NodeMother.UPDATED_AT,
+                      null,
+                      null,
+                      null));
     }
 
     @Test
@@ -430,7 +478,16 @@ class NodeTest {
           .isThrownBy(
               () ->
                   Node.reconstitute(
-                      NODE_ID, null, null, null, POSITION, NOW, LATER, null, null, null));
+                      NodeMother.NODE_ID,
+                      null,
+                      null,
+                      null,
+                      NodeMother.POSITION,
+                      NodeMother.CREATED_AT,
+                      NodeMother.UPDATED_AT,
+                      null,
+                      null,
+                      null));
     }
 
     @Test
@@ -440,7 +497,16 @@ class NodeTest {
           .isThrownBy(
               () ->
                   Node.reconstitute(
-                      NODE_ID, "   ", null, null, POSITION, NOW, LATER, null, null, null));
+                      NodeMother.NODE_ID,
+                      "   ",
+                      null,
+                      null,
+                      NodeMother.POSITION,
+                      NodeMother.CREATED_AT,
+                      NodeMother.UPDATED_AT,
+                      null,
+                      null,
+                      null));
     }
 
     @Test
@@ -450,7 +516,16 @@ class NodeTest {
           .isThrownBy(
               () ->
                   Node.reconstitute(
-                      NODE_ID, NAME, null, NODE_ID, POSITION, NOW, LATER, null, null, null));
+                      NodeMother.NODE_ID,
+                      NodeMother.NAME,
+                      null,
+                      NodeMother.NODE_ID,
+                      NodeMother.POSITION,
+                      NodeMother.CREATED_AT,
+                      NodeMother.UPDATED_AT,
+                      null,
+                      null,
+                      null));
     }
 
     @Test
@@ -459,7 +534,17 @@ class NodeTest {
       assertThatNullPointerException()
           .isThrownBy(
               () ->
-                  Node.reconstitute(NODE_ID, NAME, null, null, null, NOW, LATER, null, null, null));
+                  Node.reconstitute(
+                      NodeMother.NODE_ID,
+                      NodeMother.NAME,
+                      null,
+                      null,
+                      null,
+                      NodeMother.CREATED_AT,
+                      NodeMother.UPDATED_AT,
+                      null,
+                      null,
+                      null));
     }
 
     @Test
@@ -469,7 +554,16 @@ class NodeTest {
           .isThrownBy(
               () ->
                   Node.reconstitute(
-                      NODE_ID, NAME, null, null, POSITION, null, LATER, null, null, null));
+                      NodeMother.NODE_ID,
+                      NodeMother.NAME,
+                      null,
+                      null,
+                      NodeMother.POSITION,
+                      null,
+                      NodeMother.UPDATED_AT,
+                      null,
+                      null,
+                      null));
     }
 
     @Test
@@ -479,7 +573,16 @@ class NodeTest {
           .isThrownBy(
               () ->
                   Node.reconstitute(
-                      NODE_ID, NAME, null, null, POSITION, NOW, null, null, null, null));
+                      NodeMother.NODE_ID,
+                      NodeMother.NAME,
+                      null,
+                      null,
+                      NodeMother.POSITION,
+                      NodeMother.CREATED_AT,
+                      null,
+                      null,
+                      null,
+                      null));
     }
   }
 
@@ -490,9 +593,8 @@ class NodeTest {
     @Test
     @DisplayName("should be equal to another node with same id")
     void should_be_equal_to_another_node_with_same_id() {
-      var node = createNode();
-      var otherNode =
-          Node.create(NODE_ID, "other name", null, Optional.empty(), Position.of(7), LATER);
+      var node = NodeMother.aNode().build();
+      var otherNode = NodeMother.aNode().name("other name").build();
 
       assertThat(node).isEqualTo(otherNode);
     }
@@ -500,9 +602,8 @@ class NodeTest {
     @Test
     @DisplayName("should have same hashCode as another node with same id")
     void should_have_same_hash_code_as_another_node_with_same_id() {
-      var node = createNode();
-      var otherNode =
-          Node.create(NODE_ID, "other name", null, Optional.empty(), Position.of(7), LATER);
+      var node = NodeMother.aNode().build();
+      var otherNode = NodeMother.aNode().name("other name").build();
 
       assertThat(node).hasSameHashCodeAs(otherNode);
     }
@@ -510,47 +611,10 @@ class NodeTest {
     @Test
     @DisplayName("should not be equal to node with different id")
     void should_not_be_equal_to_node_with_different_id() {
-      var node = createNode();
-      var otherNode =
-          Node.create(NodeId.of("other-node"), NAME, DESCRIPTION, Optional.empty(), POSITION, NOW);
+      var node = NodeMother.aNode().build();
+      var otherNode = NodeMother.aNode().id(NodeId.of("other-node")).build();
 
       assertThat(node).isNotEqualTo(otherNode);
     }
-  }
-
-  private static Node createNode() {
-    return Node.create(NODE_ID, NAME, DESCRIPTION, Optional.empty(), POSITION, NOW);
-  }
-
-  /**
-   * Every nullable field populated, so the recursive comparisons can catch a copyWith that drops
-   * one
-   */
-  private static Node populatedNode() {
-    return Node.reconstitute(
-        NODE_ID,
-        NAME,
-        DESCRIPTION,
-        null,
-        POSITION,
-        NOW,
-        NOW,
-        DELETED_AT,
-        Node.Status.DONE,
-        COMPLETED_AT);
-  }
-
-  private static Node nodeWith(Node.Status status) {
-    return Node.reconstitute(
-        NODE_ID,
-        NAME,
-        DESCRIPTION,
-        null,
-        POSITION,
-        NOW,
-        NOW,
-        null,
-        status,
-        status == Node.Status.DONE ? COMPLETED_AT : null);
   }
 }

@@ -28,7 +28,11 @@ public abstract class NodeRepositoryContractTest {
   // Later than every NodeMother instant by construction, so no fixture value can equal an operation
   // instant
   protected static final Instant NOW = NodeMother.DELETED_AT.plus(1, ChronoUnit.DAYS);
-  protected static final Instant LATER = NOW.plus(1, ChronoUnit.DAYS);
+  // Microsecond digits, the finest Postgres stores, so a column or a mapping that keeps fewer fails
+  // every assertion on LATER. Finer digits would fail against Postgres itself, which rounds them
+  // away
+  protected static final Instant LATER =
+      NOW.plus(1, ChronoUnit.DAYS).plus(504_627, ChronoUnit.MICROS);
 
   protected NodeRepositoryPort repository;
 

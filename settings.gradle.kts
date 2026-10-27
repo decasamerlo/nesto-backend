@@ -9,3 +9,4 @@
 rootProject.name = "nesto-backend"
 
 include(":core")
+include(":persistence")

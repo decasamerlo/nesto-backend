@@ -53,6 +53,11 @@ public final class NodeMother {
     return this;
   }
 
+  public NodeMother description(String value) {
+    this.description = value;
+    return this;
+  }
+
   public NodeMother parentId(NodeId value) {
     this.parentId = value;
     return this;
@@ -60,6 +65,16 @@ public final class NodeMother {
 
   public NodeMother position(Position value) {
     this.position = value;
+    return this;
+  }
+
+  public NodeMother createdAt(Instant value) {
+    this.createdAt = value;
+    return this;
+  }
+
+  public NodeMother updatedAt(Instant value) {
+    this.updatedAt = value;
     return this;
   }
 

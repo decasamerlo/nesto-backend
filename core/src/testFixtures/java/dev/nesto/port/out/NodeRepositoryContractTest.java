@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import dev.nesto.domain.Node;
 import dev.nesto.domain.NodeId;
@@ -28,7 +29,11 @@ public abstract class NodeRepositoryContractTest {
   // Later than every NodeMother instant by construction, so no fixture value can equal an operation
   // instant
   protected static final Instant NOW = NodeMother.DELETED_AT.plus(1, ChronoUnit.DAYS);
-  protected static final Instant LATER = NOW.plus(1, ChronoUnit.DAYS);
+  // Microsecond digits, the finest Postgres stores, so a column or a mapping that keeps fewer fails
+  // every assertion on LATER. Finer digits would fail against Postgres itself, which rounds them
+  // away
+  protected static final Instant LATER =
+      NOW.plus(1, ChronoUnit.DAYS).plus(504_627, ChronoUnit.MICROS);
 
   protected NodeRepositoryPort repository;
 
@@ -126,11 +131,35 @@ public abstract class NodeRepositoryContractTest {
     @DisplayName("should replace previous version on second save of same id")
     void should_replace_previous_version_on_second_save_of_same_id() {
       repository.save(NodeMother.aNode().build());
-      var updated = NodeMother.aNode().name("new name").build();
+      repository.save(NodeMother.aNode().id(OTHER_NODE_ID).build());
+      repository.save(NodeMother.aChildNode().build());
+      var updated =
+          NodeMother.aChildNode()
+              .name("new name")
+              .description("new description")
+              .parentId(OTHER_NODE_ID)
+              .position(Position.of(2))
+              .updatedAt(LATER)
+              .status(Node.Status.DONE)
+              .build();
 
       repository.save(updated);
 
-      assertThat(repository.findById(updated.getId()).map(Node::getName)).contains("new name");
+      assertThat(repository.findById(updated.getId()))
+          .get()
+          .usingRecursiveComparison()
+          .isEqualTo(updated);
+    }
+
+    @Test
+    @DisplayName("should keep first createdAt on second save of same id")
+    void should_keep_first_created_at_on_second_save_of_same_id() {
+      repository.save(NodeMother.aNode().build());
+
+      repository.save(NodeMother.aNode().createdAt(NOW).build());
+
+      assertThat(repository.findById(NodeMother.NODE_ID).map(Node::getCreatedAt))
+          .contains(NodeMother.CREATED_AT);
     }
   }
 
@@ -281,6 +310,15 @@ public abstract class NodeRepositoryContractTest {
       assertThat(repository.findDeletedById(NodeMother.CHILD_ID))
           .hasValueSatisfying(n -> assertThat(n.getDeletedAt()).hasValue(NOW));
     }
+
+    @Test
+    @DisplayName("should reject null instant")
+    void should_reject_null_instant() {
+      repository.save(NodeMother.aNode().build());
+
+      assertThatNullPointerException()
+          .isThrownBy(() -> repository.softDeleteSubtree(NodeMother.NODE_ID, null));
+    }
   }
 
   @Nested
@@ -377,6 +415,14 @@ public abstract class NodeRepositoryContractTest {
 
       assertThat(repository.restoreSubtree(ABSENT_ID, LATER)).isEqualTo(0);
       assertThat(repository.findDeletedById(root.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("should reject null instant")
+    void should_reject_null_instant() {
+      // An absent root: on a node it visits, the fake throws from deletedAt::equals with or
+      // without its guard, so only a root it can't find shows the guard is there
+      assertThatNullPointerException().isThrownBy(() -> repository.restoreSubtree(ABSENT_ID, null));
     }
   }
 

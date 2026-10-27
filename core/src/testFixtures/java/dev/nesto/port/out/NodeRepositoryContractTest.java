@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import dev.nesto.domain.Node;
 import dev.nesto.domain.NodeId;
@@ -25,10 +26,22 @@ public abstract class NodeRepositoryContractTest {
   protected static final NodeId OTHER_CHILD_ID = NodeId.of("other-child");
   protected static final NodeId ABSENT_ID = NodeId.of("absent");
 
+  // Siblings tied on position, which the domain forbids but neither store refuses, in the order
+  // the contract reads them back: by code point. B comes before a, where a linguistic or
+  // case-blind order, or the fake's HashMap, puts a first, and U+FF5E before U+1F600, where
+  // String's UTF-16 order puts U+1F600 first
+  private static final NodeId[] TIED_IDS_IN_ORDER = {
+    NodeId.of("B"), NodeId.of("a"), NodeId.of("c"), NodeId.of("\uFF5E"), NodeId.of("\uD83D\uDE00")
+  };
+
   // Later than every NodeMother instant by construction, so no fixture value can equal an operation
   // instant
   protected static final Instant NOW = NodeMother.DELETED_AT.plus(1, ChronoUnit.DAYS);
-  protected static final Instant LATER = NOW.plus(1, ChronoUnit.DAYS);
+  // Microsecond digits, the finest Postgres stores, so a column or a mapping that keeps fewer fails
+  // every assertion on LATER. Finer digits would fail against Postgres itself, which rounds them
+  // away
+  protected static final Instant LATER =
+      NOW.plus(1, ChronoUnit.DAYS).plus(504_627, ChronoUnit.MICROS);
 
   protected NodeRepositoryPort repository;
 
@@ -126,11 +139,51 @@ public abstract class NodeRepositoryContractTest {
     @DisplayName("should replace previous version on second save of same id")
     void should_replace_previous_version_on_second_save_of_same_id() {
       repository.save(NodeMother.aNode().build());
-      var updated = NodeMother.aNode().name("new name").build();
+      repository.save(NodeMother.aNode().id(OTHER_NODE_ID).build());
+      repository.save(NodeMother.aChildNode().build());
+      var updated =
+          NodeMother.aChildNode()
+              .name("new name")
+              .description("new description")
+              .parentId(OTHER_NODE_ID)
+              .position(Position.of(2))
+              .updatedAt(LATER)
+              .status(Node.Status.DONE)
+              .build();
 
       repository.save(updated);
 
-      assertThat(repository.findById(updated.getId()).map(Node::getName)).contains("new name");
+      assertThat(repository.findById(updated.getId()))
+          .get()
+          .usingRecursiveComparison()
+          .isEqualTo(updated);
+    }
+
+    @Test
+    @DisplayName("should keep first createdAt on second save of same id")
+    void should_keep_first_created_at_on_second_save_of_same_id() {
+      repository.save(NodeMother.aNode().build());
+
+      repository.save(NodeMother.aNode().createdAt(NOW).build());
+
+      assertThat(repository.findById(NodeMother.NODE_ID).map(Node::getCreatedAt))
+          .contains(NodeMother.CREATED_AT);
+    }
+
+    @Test
+    @DisplayName("should clear nullable fields on second save of same id")
+    void should_clear_nullable_fields_on_second_save_of_same_id() {
+      repository.save(NodeMother.aNode().build());
+      repository.save(NodeMother.aChildNode().status(Node.Status.DONE).build());
+
+      var cleared = NodeMother.aChildNode().description(null).parentId(null).status(null).build();
+
+      repository.save(cleared);
+
+      assertThat(repository.findById(cleared.getId()))
+          .get()
+          .usingRecursiveComparison()
+          .isEqualTo(cleared);
     }
   }
 
@@ -146,6 +199,14 @@ public abstract class NodeRepositoryContractTest {
       assertThat(repository.findRoots())
           .extracting(Node::getId)
           .containsExactly(OTHER_NODE_ID, NodeMother.NODE_ID);
+    }
+
+    @Test
+    @DisplayName("should order roots at same position by id")
+    void should_order_roots_at_same_position_by_id() {
+      saveTiedSiblings(null);
+
+      assertThat(repository.findRoots()).extracting(Node::getId).containsExactly(TIED_IDS_IN_ORDER);
     }
 
     @Test
@@ -188,6 +249,17 @@ public abstract class NodeRepositoryContractTest {
       assertThat(repository.findChildren(NodeMother.NODE_ID))
           .extracting(Node::getId)
           .containsExactly(OTHER_CHILD_ID, NodeMother.CHILD_ID);
+    }
+
+    @Test
+    @DisplayName("should order children at same position by id")
+    void should_order_children_at_same_position_by_id() {
+      repository.save(NodeMother.aNode().build());
+      saveTiedSiblings(NodeMother.NODE_ID);
+
+      assertThat(repository.findChildren(NodeMother.NODE_ID))
+          .extracting(Node::getId)
+          .containsExactly(TIED_IDS_IN_ORDER);
     }
 
     @Test
@@ -280,6 +352,15 @@ public abstract class NodeRepositoryContractTest {
       assertThat(repository.softDeleteSubtree(NodeMother.NODE_ID, LATER)).isEqualTo(2);
       assertThat(repository.findDeletedById(NodeMother.CHILD_ID))
           .hasValueSatisfying(n -> assertThat(n.getDeletedAt()).hasValue(NOW));
+    }
+
+    @Test
+    @DisplayName("should reject null instant")
+    void should_reject_null_instant() {
+      repository.save(NodeMother.aNode().build());
+
+      assertThatNullPointerException()
+          .isThrownBy(() -> repository.softDeleteSubtree(NodeMother.NODE_ID, null));
     }
   }
 
@@ -378,6 +459,14 @@ public abstract class NodeRepositoryContractTest {
       assertThat(repository.restoreSubtree(ABSENT_ID, LATER)).isEqualTo(0);
       assertThat(repository.findDeletedById(root.getId())).isPresent();
     }
+
+    @Test
+    @DisplayName("should reject null instant")
+    void should_reject_null_instant() {
+      // An absent root: on a node it visits, the fake throws from deletedAt::equals with or
+      // without its guard, so only a root it can't find shows the guard is there
+      assertThatNullPointerException().isThrownBy(() -> repository.restoreSubtree(ABSENT_ID, null));
+    }
   }
 
   @Nested
@@ -417,6 +506,13 @@ public abstract class NodeRepositoryContractTest {
     repository.save(NodeMother.aChildNode().id(OTHER_CHILD_ID).position(Position.of(1)).build());
     repository.save(NodeMother.aNode().id(GRANDCHILD_ID).parentId(NodeMother.CHILD_ID).build());
     repository.save(NodeMother.aNode().id(OTHER_NODE_ID).position(Position.of(1)).build());
+  }
+
+  // In reverse, so a read that returns them in insertion order fails too
+  private void saveTiedSiblings(NodeId parentId) {
+    for (var id : List.of(TIED_IDS_IN_ORDER).reversed()) {
+      repository.save(NodeMother.aNode().id(id).parentId(parentId).build());
+    }
   }
 
   private void assertDefensiveCopy(Supplier<List<Node>> read, Node... expected) {

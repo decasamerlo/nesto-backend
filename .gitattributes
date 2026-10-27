@@ -4,8 +4,10 @@
 # Linux start script should use lf
 /gradlew        text eol=lf
 
-# These are Windows script files and should use crlf
-*.bat           text eol=crlf
+# Windows script files are stored as written, with the crlf the wrapper
+# task generates. Under a text rule, a bump committed without
+# normalization leaves every checkout showing gradlew.bat as modified
+*.bat           -text
 
 # Binary files should be left untouched
 *.jar           binary

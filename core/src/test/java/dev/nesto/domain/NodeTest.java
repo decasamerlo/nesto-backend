@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.time.Instant;
 import java.util.Optional;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,6 +18,7 @@ class NodeTest {
   private static final Position POSITION = Position.of(0);
   private static final Instant NOW = Instant.parse("2026-01-01T01:00:00Z");
   private static final Instant LATER = Instant.parse("2026-01-02T01:00:00Z");
+  private static final Instant DELETED_AT = Instant.parse("2026-01-03T01:00:00Z");
 
   @Nested
   @DisplayName("Node.create")
@@ -36,6 +36,7 @@ class NodeTest {
       assertThat(node.getPosition()).isEqualTo(POSITION);
       assertThat(node.getCreatedAt()).isEqualTo(NOW);
       assertThat(node.getUpdatedAt()).isEqualTo(NOW);
+      assertThat(node.getDeletedAt()).isEmpty();
     }
 
     @Test
@@ -117,42 +118,24 @@ class NodeTest {
   }
 
   @Nested
-  @DisplayName("Node.createdAt")
-  class CreatedAt {
-
-    @Test
-    @DisplayName("should stay fixed after mutations")
-    void should_stay_fixed_after_mutations() {
-      var original = createNode();
-
-      var renamed = original.rename("new name", LATER);
-      var changed = original.changeDescription("new description", LATER);
-
-      assertThat(renamed.getCreatedAt()).isEqualTo(NOW);
-      assertThat(changed.getCreatedAt()).isEqualTo(NOW);
-
-      assertThat(renamed.getParentId()).isEmpty();
-      assertThat(changed.getParentId()).isEmpty();
-
-      assertThat(renamed.getPosition()).isEqualTo(POSITION);
-      assertThat(changed.getPosition()).isEqualTo(POSITION);
-    }
-  }
-
-  @Nested
   @DisplayName("Node.rename")
   class Rename {
 
     @Test
-    @DisplayName("should return new node with new name and stamped updatedAt")
-    void should_return_new_node_with_new_name_and_stamped_updated_at() {
-      var original = createNode();
+    @DisplayName("should return new node with new name, stamped updatedAt and original fields")
+    void should_return_new_node_with_new_name_stamped_updated_at_and_original_fields() {
+      var original = deletedNode();
       var newName = "new name";
 
       var renamed = original.rename(newName, LATER);
 
       assertThat(renamed.getName()).isEqualTo(newName);
       assertThat(renamed.getUpdatedAt()).isEqualTo(LATER);
+
+      assertThat(renamed)
+          .usingRecursiveComparison()
+          .ignoringFields("name", "updatedAt")
+          .isEqualTo(original);
     }
 
     @Test
@@ -208,15 +191,21 @@ class NodeTest {
   class ChangeDescription {
 
     @Test
-    @DisplayName("should return new node with new description and stamped updatedAt")
-    void should_return_new_node_with_new_description_and_stamped_updated_at() {
-      var original = createNode();
+    @DisplayName(
+        "should return new node with new description, stamped updatedAt and original fields")
+    void should_return_new_node_with_new_description_stamped_updated_at_and_original_fields() {
+      var original = deletedNode();
       var newDescription = "new description";
 
       var changed = original.changeDescription(newDescription, LATER);
 
       assertThat(changed.getDescription()).isEqualTo(newDescription);
       assertThat(changed.getUpdatedAt()).isEqualTo(LATER);
+
+      assertThat(changed)
+          .usingRecursiveComparison()
+          .ignoringFields("description", "updatedAt")
+          .isEqualTo(original);
     }
 
     @Test
@@ -269,7 +258,8 @@ class NodeTest {
     @Test
     @DisplayName("should rebuild root node with explicit timestamps")
     void should_rebuild_root_node_with_explicit_timestamps() {
-      var node = Node.reconstitute(NODE_ID, NAME, DESCRIPTION, null, POSITION, NOW, LATER);
+      var node =
+          Node.reconstitute(NODE_ID, NAME, DESCRIPTION, null, POSITION, NOW, LATER, DELETED_AT);
 
       assertThat(node.getId()).isEqualTo(NODE_ID);
       assertThat(node.getName()).isEqualTo(NAME);
@@ -278,6 +268,7 @@ class NodeTest {
       assertThat(node.getPosition()).isEqualTo(POSITION);
       assertThat(node.getCreatedAt()).isEqualTo(NOW);
       assertThat(node.getUpdatedAt()).isEqualTo(LATER);
+      assertThat(node.getDeletedAt()).hasValue(DELETED_AT);
     }
 
     @Test
@@ -286,7 +277,14 @@ class NodeTest {
       var parent = createNode();
       var child =
           Node.reconstitute(
-              NodeId.of("child-node"), "child node", null, parent.getId(), POSITION, NOW, LATER);
+              NodeId.of("child-node"),
+              "child node",
+              null,
+              parent.getId(),
+              POSITION,
+              NOW,
+              LATER,
+              null);
 
       assertThat(child.getParentId()).contains(parent.getId());
     }
@@ -295,49 +293,54 @@ class NodeTest {
     @DisplayName("should reject null id")
     void should_reject_null_id() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.reconstitute(null, NAME, null, null, POSITION, NOW, LATER));
+          .isThrownBy(() -> Node.reconstitute(null, NAME, null, null, POSITION, NOW, LATER, null));
     }
 
     @Test
     @DisplayName("should reject null name")
     void should_reject_null_name() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.reconstitute(NODE_ID, null, null, null, POSITION, NOW, LATER));
+          .isThrownBy(
+              () -> Node.reconstitute(NODE_ID, null, null, null, POSITION, NOW, LATER, null));
     }
 
     @Test
     @DisplayName("should reject blank name")
     void should_reject_blank_name() {
       assertThatIllegalArgumentException()
-          .isThrownBy(() -> Node.reconstitute(NODE_ID, "   ", null, null, POSITION, NOW, LATER));
+          .isThrownBy(
+              () -> Node.reconstitute(NODE_ID, "   ", null, null, POSITION, NOW, LATER, null));
     }
 
     @Test
     @DisplayName("should reject self-referential parent")
     void should_reject_self_referential_parent() {
       assertThatIllegalArgumentException()
-          .isThrownBy(() -> Node.reconstitute(NODE_ID, NAME, null, NODE_ID, POSITION, NOW, LATER));
+          .isThrownBy(
+              () -> Node.reconstitute(NODE_ID, NAME, null, NODE_ID, POSITION, NOW, LATER, null));
     }
 
     @Test
     @DisplayName("should reject null position")
     void should_reject_null_position() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.reconstitute(NODE_ID, NAME, null, null, null, NOW, LATER));
+          .isThrownBy(() -> Node.reconstitute(NODE_ID, NAME, null, null, null, NOW, LATER, null));
     }
 
     @Test
     @DisplayName("should reject null createdAt")
     void should_reject_null_created_at() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.reconstitute(NODE_ID, NAME, null, null, POSITION, null, LATER));
+          .isThrownBy(
+              () -> Node.reconstitute(NODE_ID, NAME, null, null, POSITION, null, LATER, null));
     }
 
     @Test
     @DisplayName("should reject null updatedAt")
     void should_reject_null_updated_at() {
       assertThatNullPointerException()
-          .isThrownBy(() -> Node.reconstitute(NODE_ID, NAME, null, null, POSITION, NOW, null));
+          .isThrownBy(
+              () -> Node.reconstitute(NODE_ID, NAME, null, null, POSITION, NOW, null, null));
     }
   }
 
@@ -378,5 +381,10 @@ class NodeTest {
 
   private static Node createNode() {
     return Node.create(NODE_ID, NAME, DESCRIPTION, Optional.empty(), POSITION, NOW);
+  }
+
+  /** Deleted, so the recursive comparisons can catch a copyWith that drops deletedAt */
+  private static Node deletedNode() {
+    return Node.reconstitute(NODE_ID, NAME, DESCRIPTION, null, POSITION, NOW, NOW, DELETED_AT);
   }
 }

@@ -6,14 +6,14 @@ Ecosystem context inherited from parent — see [AGENTS.md](../AGENTS.md) (meta-
 
 ## Build commands
 
-- Full suite: `./gradlew build` — or `./gradlew :core:test` for domain tests only.
+- Full suite: `./gradlew build`. One module: `./gradlew :core:test` (domain, ports and application services) or `./gradlew :app:test` (adapters and the architecture rules; needs Docker).
 - Single test class: `./gradlew :core:test --tests "dev.nesto.domain.NodeTest"`
 - Cache-poisoned failure (stale class files in `build/`): `./gradlew :core:clean :core:test --rerun-tasks --no-build-cache`
 
 ## Module map
 
-- `core` — domain: entities and ports (`Node`, `NodeId`, `Position`). Plain `java-library` (Lombok, JUnit 5 + AssertJ). No Spring or DB — unit-testable without context. New `Node` mutators follow ADR-007's pure-function shape — return a new instance, stamp `updatedAt`, return `this` on no-op ([ADR 007](../docs/adr/007-immutable-node-entity.md)).
-- `app` — every production adapter, over `core` alone, and later the composition root (decasamerlo/nesto#103). Spring Boot with Spring Data JPA, Liquibase and PostgreSQL. An adapter's package is `adapter.{in,out}.{category}.{implementation}`: the Postgres adapter is `adapter.out.persistence.postgresql`, with its changelog in `src/main/resources/db/postgresql/changelog/`, and the REST adapter, when it comes, is `adapter.in.web.rest`. The adapter's tests run on Testcontainers Postgres, so `:app:test` needs Docker ([ADR 010](../docs/adr/010-node-persistence-seam.md), [ADR 014](../docs/adr/014-backend-module-layout.md)).
+- `core` — domain, ports and application services: entities (`Node`, `NodeId`, `Position`), driven ports in `port.out`, driving ports in `port.in`, application services (`NodeApplicationService`) in `application`. Plain `java-library` (Lombok, JUnit 5 + AssertJ). No Spring or DB — unit-testable without context. New `Node` mutators follow ADR-007's pure-function shape — return a new instance, stamp `updatedAt`, return `this` on no-op ([ADR 007](../docs/adr/007-immutable-node-entity.md)). One application service per aggregate implements a driving port per operation and takes a `Clock`; only application services call ports; the composition root, not built yet (decasamerlo/nesto#103), builds each with a `@Bean` method ([ADR 008](../docs/adr/008-application-layer.md)).
+- `app` — every production adapter, over `core` alone, and later the composition root (decasamerlo/nesto#103). Spring Boot with Spring Data JPA, Liquibase and PostgreSQL. An adapter's package is `adapter.{in,out}.{category}.{implementation}`: the Postgres adapter is `adapter.out.persistence.postgresql`, with its changelog in `src/main/resources/db/postgresql/changelog/`, and the REST adapter, when it comes, is `adapter.in.web.rest`. The adapter's tests run on Testcontainers Postgres, so `:app:test` needs Docker ([ADR 010](../docs/adr/010-node-persistence-seam.md), [ADR 014](../docs/adr/014-backend-module-layout.md)). `dev.nesto.ArchitectureTest` holds ADR 014's five ArchUnit rules, which guard the boundaries inside both modules.
 
 ## Stack notes
 

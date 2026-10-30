@@ -6,13 +6,14 @@ Ecosystem context inherited from parent — see [AGENTS.md](../AGENTS.md) (meta-
 
 ## Build commands
 
-- Full suite: `./gradlew build` — or `./gradlew :core:test` for domain tests only.
+- Full suite: `./gradlew build`. One module: `./gradlew :core:test` (domain and ports) or `./gradlew :application:test` (application services).
 - Single test class: `./gradlew :core:test --tests "dev.nesto.domain.NodeTest"`
 - Cache-poisoned failure (stale class files in `build/`): `./gradlew :core:clean :core:test --rerun-tasks --no-build-cache`
 
 ## Module map
 
-- `core` — domain: entities and ports (`Node`, `NodeId`, `Position`). Plain `java-library` (Lombok, JUnit 5 + AssertJ). No Spring or DB — unit-testable without context. New `Node` mutators follow ADR-007's pure-function shape — return a new instance, stamp `updatedAt`, return `this` on no-op ([ADR 007](../docs/adr/007-immutable-node-entity.md)).
+- `core` — domain and ports: entities (`Node`, `NodeId`, `Position`), driven ports in `port.out`, driving ports in `port.in`. Plain `java-library` (Lombok, JUnit 5 + AssertJ). No Spring or DB — unit-testable without context. New `Node` mutators follow ADR-007's pure-function shape — return a new instance, stamp `updatedAt`, return `this` on no-op ([ADR 007](../docs/adr/007-immutable-node-entity.md)).
+- `application` — application services (`NodeApplicationService`), over `core` alone. Plain `java-library` (Lombok; tests use `core`'s fixtures). No Spring: a composition root, not built yet (decasamerlo/nesto#103), will build each service with a `@Bean` method. One service per aggregate implements a driving port per operation and takes a `Clock`; only application services call ports ([ADR 008](../docs/adr/008-application-layer.md)).
 - `api` — Spring Boot REST adapter. **Not created yet.**
 
 ## Stack notes

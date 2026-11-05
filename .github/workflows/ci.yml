@@ -1,6 +1,11 @@
 name: ci
 on:
   pull_request:
+  # The push to main is the run that writes the Gradle cache, which every pull request reads:
+  # setup-gradle writes only from the default branch, and a pull request's own cache sits
+  # under a ref no other branch can see
+  push:
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,4 +17,5 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
+      - uses: gradle/actions/setup-gradle@v6
       - run: ./gradlew build

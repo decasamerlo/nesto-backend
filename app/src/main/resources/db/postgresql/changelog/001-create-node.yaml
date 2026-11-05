@@ -1,0 +1,59 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-node
+      author: decasamerlo
+      changes:
+        - createTable:
+            tableName: node
+            columns:
+              - column:
+                  name: id
+                  type: varchar(255)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: node_pkey
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(1000)
+              - column:
+                  name: parent_id
+                  type: varchar(255)
+                  constraints:
+                    foreignKeyName: fk_node_parent_id
+                    references: node(id)
+              - column:
+                  name: position
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted_at
+                  type: timestamp with time zone
+              - column:
+                  name: status
+                  type: varchar(16)
+              - column:
+                  name: completed_at
+                  type: timestamp with time zone
+        - createIndex:
+            indexName: idx_node_parent_id
+            tableName: node
+            columns:
+              - column:
+                  name: parent_id

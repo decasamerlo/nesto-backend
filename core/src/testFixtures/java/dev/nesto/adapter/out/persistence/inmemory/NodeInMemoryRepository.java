@@ -1,4 +1,4 @@
-package dev.nesto.adapter.out.persistence;
+package dev.nesto.adapter.out.persistence.inmemory;
 
 import dev.nesto.domain.Node;
 import dev.nesto.domain.NodeId;
@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.function.Predicate;
@@ -30,11 +31,13 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
       throw new IllegalStateException("parentId not found");
     }
 
-    if (nodes.containsKey(node.getId()) && nodes.get(node.getId()).getDeletedAt().isPresent()) {
+    Node stored = nodes.get(node.getId());
+
+    if (stored != null && stored.getDeletedAt().isPresent()) {
       throw new IllegalStateException("node must not be deleted");
     }
 
-    put(node);
+    put(stored == null ? node : withCreatedAt(node, stored.getCreatedAt()));
   }
 
   @Override
@@ -54,6 +57,7 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
 
   @Override
   public int softDeleteSubtree(NodeId rootId, Instant deletedAt) {
+    Objects.requireNonNull(deletedAt, "deletedAt must not be null");
     List<Node> toStamp = subtreeOf(rootId).stream().filter(ACTIVE).toList();
     toStamp.forEach(node -> put(withDeletedAt(node, deletedAt)));
     return toStamp.size();
@@ -61,6 +65,7 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
 
   @Override
   public int restoreSubtree(NodeId rootId, Instant deletedAt) {
+    Objects.requireNonNull(deletedAt, "deletedAt must not be null");
     List<Node> toClear =
         subtreeOf(rootId).stream()
             .filter(n -> n.getDeletedAt().filter(deletedAt::equals).isPresent())
@@ -104,6 +109,20 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
     }
 
     return subtree;
+  }
+
+  private static Node withCreatedAt(Node node, Instant createdAt) {
+    return Node.reconstitute(
+        node.getId(),
+        node.getName(),
+        node.getDescription(),
+        node.getParentId().orElse(null),
+        node.getPosition(),
+        createdAt,
+        node.getUpdatedAt(),
+        node.getDeletedAt().orElse(null),
+        node.getStatus().orElse(null),
+        node.getCompletedAt().orElse(null));
   }
 
   private static Node withDeletedAt(Node node, Instant deletedAt) {

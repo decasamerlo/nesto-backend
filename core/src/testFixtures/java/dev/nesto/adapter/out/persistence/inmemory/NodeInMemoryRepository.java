@@ -6,7 +6,6 @@ import dev.nesto.port.out.NodeRepositoryPort;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -83,11 +82,8 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
   private List<Node> sortedByPosition(Predicate<Node> predicate) {
     return nodes.values().stream()
         .filter(predicate)
-        // By code point, as COLLATE "C" orders id in Postgres. String's own order compares UTF-16
-        // units, which disagree with code points on ids outside the Basic Multilingual Plane
-        .sorted(
-            Comparator.comparing(Node::getPosition)
-                .thenComparing(n -> n.getId().value().codePoints().toArray(), Arrays::compare))
+        // NodeId's order, by code point, as COLLATE "C" orders id in Postgres
+        .sorted(Comparator.comparing(Node::getPosition).thenComparing(Node::getId))
         .collect(Collectors.toCollection(ArrayList::new));
   }
 

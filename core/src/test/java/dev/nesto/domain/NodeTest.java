@@ -401,6 +401,68 @@ class NodeTest {
   }
 
   @Nested
+  @DisplayName("Node.withPosition")
+  class WithPosition {
+
+    private static final Position NEW_POSITION = Position.of(7);
+
+    @Test
+    @DisplayName("should return new node with new position, stamped updatedAt and original fields")
+    void should_return_new_node_with_new_position_stamped_updated_at_and_original_fields() {
+      var original = NodeMother.aChildNode().status(Node.Status.DONE).deleted().build();
+
+      var moved = original.withPosition(NEW_POSITION, LATER);
+
+      assertThat(moved).isNotSameAs(original);
+      assertThat(moved.getPosition()).isEqualTo(NEW_POSITION);
+      assertThat(moved.getUpdatedAt()).isEqualTo(LATER);
+      assertThat(moved)
+          .usingRecursiveComparison()
+          .ignoringFields("position", "updatedAt")
+          .isEqualTo(original);
+    }
+
+    @Test
+    @DisplayName("should leave original node untouched")
+    void should_leave_original_node_untouched() {
+      var node = NodeMother.aNode().build();
+
+      node.withPosition(NEW_POSITION, LATER);
+
+      assertThat(node.getPosition()).isEqualTo(NodeMother.POSITION);
+      assertThat(node.getUpdatedAt()).isEqualTo(NodeMother.UPDATED_AT);
+    }
+
+    @Test
+    @DisplayName("should return same instance when position unchanged")
+    void should_return_same_instance_when_position_unchanged() {
+      var original = NodeMother.aNode().build();
+
+      var moved = original.withPosition(Position.of(NodeMother.POSITION.value()), LATER);
+
+      assertThat(moved).isSameAs(original);
+      assertThat(moved.getUpdatedAt()).isEqualTo(NodeMother.UPDATED_AT);
+    }
+
+    @Test
+    @DisplayName("should reject null position")
+    void should_reject_null_position() {
+      var node = NodeMother.aNode().build();
+
+      assertThatNullPointerException().isThrownBy(() -> node.withPosition(null, LATER));
+    }
+
+    @Test
+    @DisplayName("should reject null now, even when position unchanged")
+    void should_reject_null_now_even_when_position_unchanged() {
+      var node = NodeMother.aNode().build();
+
+      assertThatNullPointerException()
+          .isThrownBy(() -> node.withPosition(NodeMother.POSITION, null));
+    }
+  }
+
+  @Nested
   @DisplayName("Node.reconstitute")
   class Reconstitute {
 

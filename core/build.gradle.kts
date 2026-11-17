@@ -1,38 +1,38 @@
 plugins {
-  `java-library`
-  `java-test-fixtures`
+    `java-library`
+    `java-test-fixtures`
 }
 
 group = "dev.nesto"
 base.archivesName = "nesto-core"
 
 java {
-  toolchain {
-    languageVersion = JavaLanguageVersion.of(25)
-  }
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
 }
 
 repositories {
-  mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-  compileOnly(libs.lombok)
+    compileOnly(libs.lombok)
 
-  annotationProcessor(libs.lombok)
+    annotationProcessor(libs.lombok)
 
-  testImplementation(platform(libs.junit.bom))
-  testImplementation(libs.junit.jupiter)
-  testImplementation(libs.assertj.core)
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.assertj.core)
 
-  testRuntimeOnly(platform(libs.junit.bom))
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly(platform(libs.junit.bom))
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-  testFixturesApi(platform(libs.junit.bom))
-  testFixturesApi(libs.junit.jupiter)
-  testFixturesApi(libs.assertj.core)
+    testFixturesApi(platform(libs.junit.bom))
+    testFixturesApi(libs.junit.jupiter)
+    testFixturesApi(libs.assertj.core)
 }
 
 tasks.withType<Test> {
-  useJUnitPlatform()
+    useJUnitPlatform()
 }

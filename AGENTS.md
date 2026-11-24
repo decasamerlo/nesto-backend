@@ -13,7 +13,7 @@ Ecosystem context inherited from parent — see [AGENTS.md](../AGENTS.md) (meta-
 ## Module map
 
 - `core` — domain: entities and ports (`Node`, `NodeId`, `Position`). Plain `java-library` (Lombok, JUnit 5 + AssertJ). No Spring or DB — unit-testable without context. New `Node` mutators follow ADR-007's pure-function shape — return a new instance, stamp `updatedAt`, return `this` on no-op ([ADR 007](../docs/adr/007-immutable-node-entity.md)).
-- `api` — Spring Boot REST adapter. **Not created yet.**
+- `app` — every production adapter, over `core` alone, and later the composition root (decasamerlo/nesto#103). Spring Boot with Spring Data JPA, Liquibase and PostgreSQL. An adapter's package is `adapter.{in,out}.{category}.{implementation}`: the Postgres adapter is `adapter.out.persistence.postgresql`, with its changelog in `src/main/resources/db/postgresql/changelog/`, and the REST adapter, when it comes, is `adapter.in.web.rest`. The adapter's tests run on Testcontainers Postgres, so `:app:test` needs Docker ([ADR 010](../docs/adr/010-node-persistence-seam.md), [ADR 014](../docs/adr/014-backend-module-layout.md)).
 
 ## Stack notes
 

@@ -33,6 +33,7 @@ dependencies {
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.archunit.junit6)
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

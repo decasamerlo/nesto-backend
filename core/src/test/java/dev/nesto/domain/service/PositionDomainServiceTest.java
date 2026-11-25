@@ -141,7 +141,7 @@ class PositionDomainServiceTest {
         textBlock =
             """
             absent                                 | 01K9PQ3V7R2M8XWJ4TN6HC5BYD
-            deleted, so findChildren leaves it out | 01K9PQ4A2F8KZ3VN7RX1MJ6TQE
+            deleted, so listChildren leaves it out | 01K9PQ4A2F8KZ3VN7RX1MJ6TQE
             under another parent, so not handed in | 01K9PQ4H9W5CY2DB8LS3GV7NRF
             the moving node itself                 | 01K9PQ4R1T6JX9QE3WM5ZK8CPA
             """)

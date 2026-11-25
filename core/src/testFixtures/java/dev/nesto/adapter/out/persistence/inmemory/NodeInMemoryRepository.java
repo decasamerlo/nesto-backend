@@ -46,12 +46,12 @@ public class NodeInMemoryRepository implements NodeRepositoryPort {
   }
 
   @Override
-  public List<Node> findRoots() {
+  public List<Node> listRoots() {
     return sortedByPosition(ACTIVE.and(n -> n.getParentId().isEmpty()));
   }
 
   @Override
-  public List<Node> findChildren(NodeId parentId) {
+  public List<Node> listChildren(NodeId parentId) {
     return sortedByPosition(ACTIVE.and(n -> n.getParentId().filter(parentId::equals).isPresent()));
   }
 

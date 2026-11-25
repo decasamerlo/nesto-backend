@@ -14,7 +14,7 @@ import java.util.stream.IntStream;
 
 // The sibling-ordering rule of decasamerlo/nesto#15: where a created or moved node goes among its
 // siblings, and which siblings shift to make room. Handed the siblings, it calls no port (ADR 008),
-// so the use case reads them through findChildren or findRoots and saves what it returns
+// so the use case reads them through listChildren or listRoots and saves what it returns
 public final class PositionDomainService {
 
   // Siblings that already share a Position are ordered by id, not rejected, in NodeId's order: the
@@ -95,7 +95,7 @@ public final class PositionDomainService {
   }
 
   // Every sibling the move rule rejects is missing from others: one never handed in, a deleted one
-  // that findChildren leaves out, one under another parent, and the moving node, filtered out above
+  // that listChildren leaves out, one under another parent, and the moving node, filtered out above
   private static int indexOf(List<Node> nodes, NodeId id) {
     return IntStream.range(0, nodes.size())
         .filter(i -> nodes.get(i).getId().equals(id))

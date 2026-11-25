@@ -12,9 +12,9 @@ public interface NodeRepositoryPort {
 
   Optional<Node> findById(NodeId id);
 
-  List<Node> findRoots();
+  List<Node> listRoots();
 
-  List<Node> findChildren(NodeId parentId);
+  List<Node> listChildren(NodeId parentId);
 
   int softDeleteSubtree(NodeId rootId, Instant deletedAt);
 

@@ -57,4 +57,20 @@ class ArchitectureTest {
               "dev.nesto.port.out..",
               "dev.nesto.application..",
               "dev.nesto.adapter.[in|out].*.*..");
+
+  // dev.nesto, with no .., is the composition root alone, which builds the application services
+  // from the driven ports
+  @ArchTest
+  static final ArchRule
+      only_application_services_driven_adapters_and_the_composition_root_use_driven_ports =
+          classes()
+              .that()
+              .resideInAPackage("dev.nesto.port.out..")
+              .should()
+              .onlyHaveDependentClassesThat()
+              .resideInAnyPackage(
+                  "dev.nesto.port.out..",
+                  "dev.nesto.application..",
+                  "dev.nesto.adapter.out..",
+                  "dev.nesto");
 }

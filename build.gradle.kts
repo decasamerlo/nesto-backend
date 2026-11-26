@@ -5,3 +5,9 @@
  * Learn more about Gradle by exploring our Samples at https://docs.gradle.org/9.7.0/samples
  * This project uses @Incubating APIs which are subject to change.
  */
+
+plugins {
+    // Declared here so every module loads Spotless from one classloader: applied only per module,
+    // spotlessCheck fails once :app applies a plugin :core does not, such as Spring Boot's
+    alias(libs.plugins.spotless) apply false
+}

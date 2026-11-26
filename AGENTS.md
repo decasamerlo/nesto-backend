@@ -9,6 +9,7 @@ Ecosystem context inherited from parent — see [AGENTS.md](../AGENTS.md) (meta-
 - Full suite: `./gradlew build`. One module: `./gradlew :core:test` (domain, ports and application services) or `./gradlew :app:test` (adapters and the architecture rules; needs Docker).
 - Single test class: `./gradlew :core:test --tests "dev.nesto.domain.NodeTest"`
 - Cache-poisoned failure (stale class files in `build/`): `./gradlew :core:clean :core:test --rerun-tasks --no-build-cache`
+- Format: `./gradlew spotlessApply`. `./gradlew build` fails on any file google-java-format would change, and `./gradlew spotlessCheck` runs that check alone. An editor that formats on save runs the google-java-format release pinned in `gradle/libs.versions.toml`.
 
 ## Module map
 

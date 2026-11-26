@@ -1,5 +1,6 @@
 plugins {
     `java-library`
+    alias(libs.plugins.spotless)
 }
 
 group = "dev.nesto"
@@ -40,4 +41,12 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+spotless {
+    java {
+        // google-java-format's own defaults, the layout its command line gives: Spotless's step
+        // turns reflowLongStrings off unless told otherwise
+        googleJavaFormat(libs.google.java.format.get().version).reflowLongStrings(true)
+    }
 }

@@ -188,15 +188,15 @@ public abstract class NodeRepositoryContractTest {
   }
 
   @Nested
-  @DisplayName("findRoots")
-  class FindRoots {
+  @DisplayName("listRoots")
+  class ListRoots {
 
     @Test
     @DisplayName("should return only root nodes ordered by position ascending")
     void should_return_only_root_nodes_ordered_by_position_ascending() {
       saveTree();
 
-      assertThat(repository.findRoots())
+      assertThat(repository.listRoots())
           .extracting(Node::getId)
           .containsExactly(OTHER_NODE_ID, NodeMother.NODE_ID);
     }
@@ -206,13 +206,13 @@ public abstract class NodeRepositoryContractTest {
     void should_order_roots_at_same_position_by_id() {
       saveTiedSiblings(null);
 
-      assertThat(repository.findRoots()).extracting(Node::getId).containsExactly(TIED_IDS_IN_ORDER);
+      assertThat(repository.listRoots()).extracting(Node::getId).containsExactly(TIED_IDS_IN_ORDER);
     }
 
     @Test
     @DisplayName("should return empty list when has no roots")
     void should_return_empty_list_when_has_no_roots() {
-      assertThat(repository.findRoots()).isEmpty();
+      assertThat(repository.listRoots()).isEmpty();
     }
 
     @Test
@@ -224,7 +224,7 @@ public abstract class NodeRepositoryContractTest {
       var otherNode = NodeMother.aNode().id(OTHER_NODE_ID).build();
       repository.save(otherNode);
 
-      assertThat(repository.findRoots()).extracting(Node::getId).containsExactly(otherNode.getId());
+      assertThat(repository.listRoots()).extracting(Node::getId).containsExactly(otherNode.getId());
     }
 
     @Test
@@ -233,20 +233,20 @@ public abstract class NodeRepositoryContractTest {
       var root = NodeMother.aNode().build();
       repository.save(root);
 
-      assertDefensiveCopy(() -> repository.findRoots(), root);
+      assertDefensiveCopy(() -> repository.listRoots(), root);
     }
   }
 
   @Nested
-  @DisplayName("findChildren")
-  class FindChildren {
+  @DisplayName("listChildren")
+  class ListChildren {
 
     @Test
     @DisplayName("should return only direct children ordered by position ascending")
     void should_return_only_direct_children_ordered_by_position_ascending() {
       saveTree();
 
-      assertThat(repository.findChildren(NodeMother.NODE_ID))
+      assertThat(repository.listChildren(NodeMother.NODE_ID))
           .extracting(Node::getId)
           .containsExactly(OTHER_CHILD_ID, NodeMother.CHILD_ID);
     }
@@ -257,7 +257,7 @@ public abstract class NodeRepositoryContractTest {
       repository.save(NodeMother.aNode().build());
       saveTiedSiblings(NodeMother.NODE_ID);
 
-      assertThat(repository.findChildren(NodeMother.NODE_ID))
+      assertThat(repository.listChildren(NodeMother.NODE_ID))
           .extracting(Node::getId)
           .containsExactly(TIED_IDS_IN_ORDER);
     }
@@ -268,13 +268,13 @@ public abstract class NodeRepositoryContractTest {
       var parent = NodeMother.aNode().build();
       repository.save(parent);
 
-      assertThat(repository.findChildren(parent.getId())).isEmpty();
+      assertThat(repository.listChildren(parent.getId())).isEmpty();
     }
 
     @Test
     @DisplayName("should return empty list for unknown parent")
     void should_return_empty_list_for_unknown_parent() {
-      assertThat(repository.findChildren(ABSENT_ID)).isEmpty();
+      assertThat(repository.listChildren(ABSENT_ID)).isEmpty();
     }
 
     @Test
@@ -288,7 +288,7 @@ public abstract class NodeRepositoryContractTest {
       var otherChild = NodeMother.aChildNode().id(OTHER_CHILD_ID).build();
       repository.save(otherChild);
 
-      assertThat(repository.findChildren(parent.getId()))
+      assertThat(repository.listChildren(parent.getId()))
           .extracting(Node::getId)
           .containsExactly(otherChild.getId());
     }
@@ -301,7 +301,7 @@ public abstract class NodeRepositoryContractTest {
       repository.save(parent);
       repository.save(child);
 
-      assertDefensiveCopy(() -> repository.findChildren(parent.getId()), child);
+      assertDefensiveCopy(() -> repository.listChildren(parent.getId()), child);
     }
   }
 

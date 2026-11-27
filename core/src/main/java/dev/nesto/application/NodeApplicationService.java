@@ -27,7 +27,7 @@ public class NodeApplicationService implements SetNodeStatusUseCase, GetNodeStat
   public GetNodeStatusSummaryQuery.Result getNodeStatusSummary(NodeId nodeId) {
     Objects.requireNonNull(nodeId, "nodeId must not be null");
 
-    // Called for its throw alone: findChildren matches the parent id and never checks the parent,
+    // Called for its throw alone: listChildren matches the parent id and never checks the parent,
     // so it answers for an absent or deleted node too
     getNode(nodeId);
 
@@ -36,7 +36,7 @@ public class NodeApplicationService implements SetNodeStatusUseCase, GetNodeStat
     int open = 0;
     int untracked = 0;
 
-    for (Node child : repository.findChildren(nodeId)) {
+    for (Node child : repository.listChildren(nodeId)) {
       // No default: with case null the switch must cover every Status, so a fourth one fails to
       // compile here instead of going uncounted
       switch (child.getStatus().orElse(null)) {

@@ -68,13 +68,13 @@ class NodePostgresqlRepository implements NodeRepositoryPort {
 
   @Override
   @Transactional(readOnly = true)
-  public List<Node> findRoots() {
+  public List<Node> listRoots() {
     return toDomainList(springData.findByParentIdIsNullOrderByPositionAscIdAsc());
   }
 
   @Override
   @Transactional(readOnly = true)
-  public List<Node> findChildren(NodeId parentId) {
+  public List<Node> listChildren(NodeId parentId) {
     return toDomainList(springData.findByParentIdOrderByPositionAscIdAsc(parentId.value()));
   }
 

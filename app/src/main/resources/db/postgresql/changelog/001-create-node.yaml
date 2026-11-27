@@ -7,7 +7,7 @@ databaseChangeLog:
             tableName: node
             columns:
               # Ids are opaque, so they compare by code point and never by a linguistic collation:
-              # findRoots and findChildren break position ties on id, in the order the contract
+              # listRoots and listChildren break position ties on id, in the order the contract
               # suite pins for both stores
               - column:
                   name: id

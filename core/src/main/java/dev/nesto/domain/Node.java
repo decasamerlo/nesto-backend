@@ -134,6 +134,17 @@ public class Node {
     return copyWithStatus(target, Status.DONE.equals(target) ? now : null, now);
   }
 
+  public Node withPosition(Position newPosition, Instant now) {
+    Objects.requireNonNull(newPosition, "position must not be null");
+    Objects.requireNonNull(now, "now must not be null");
+
+    if (newPosition.equals(this.position)) {
+      return this;
+    }
+
+    return copyWithPosition(newPosition, now);
+  }
+
   public static Node reconstitute(
       NodeId id,
       String name,
@@ -185,5 +196,19 @@ public class Node {
         this.deletedAt,
         status,
         completedAt);
+  }
+
+  private Node copyWithPosition(Position position, Instant updatedAt) {
+    return new Node(
+        this.id,
+        this.name,
+        this.description,
+        this.parentId,
+        position,
+        this.createdAt,
+        updatedAt,
+        this.deletedAt,
+        this.status,
+        this.completedAt);
   }
 }

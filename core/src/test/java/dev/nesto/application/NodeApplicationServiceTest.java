@@ -9,6 +9,8 @@ import dev.nesto.adapter.out.persistence.inmemory.NodeInMemoryRepository;
 import dev.nesto.domain.Node;
 import dev.nesto.domain.NodeId;
 import dev.nesto.domain.NodeMother;
+import dev.nesto.domain.Position;
+import dev.nesto.port.in.GetNodeStatusSummaryQuery;
 import dev.nesto.port.in.SetNodeStatusUseCase;
 import java.time.Clock;
 import java.time.Instant;
@@ -174,6 +176,159 @@ class NodeApplicationServiceTest {
       assertThatNullPointerException()
           .isThrownBy(() -> service.setNodeStatus(null))
           .withMessage("command must not be null");
+    }
+  }
+
+  @Nested
+  @DisplayName("getNodeStatusSummary")
+  class GetNodeStatusSummary {
+
+    private final Node parent = NodeMother.aNode().build();
+    private int nextChild;
+
+    @BeforeEach
+    void saveParent() {
+      repository.save(parent);
+    }
+
+    private Node saveChild(NodeId parentId, Node.Status status) {
+      nextChild++;
+      var child =
+          NodeMother.aNode()
+              .id(NodeId.of("child-" + nextChild))
+              .parentId(parentId)
+              .position(Position.of(nextChild))
+              .status(status)
+              .build();
+      repository.save(child);
+      return child;
+    }
+
+    private void saveChildren(int count, Node.Status status) {
+      for (int i = 0; i < count; i++) {
+        saveChild(parent.getId(), status);
+      }
+    }
+
+    @Test
+    @DisplayName("should give four zeros for a node with no children")
+    void should_give_four_zeros_for_node_with_no_children() {
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(0, 0, 0, 0));
+    }
+
+    @Test
+    @DisplayName("should count children that are all untracked as untracked")
+    void should_count_all_untracked_children_as_untracked() {
+      saveChildren(3, null);
+
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(0, 0, 0, 3));
+    }
+
+    @Test
+    @DisplayName("should count each status into its own bucket")
+    void should_count_each_status_into_its_own_bucket() {
+      // A different count in every bucket, so a count that swaps two of them changes the Result
+      saveChildren(1, Node.Status.DONE);
+      saveChildren(2, Node.Status.IN_PROGRESS);
+      saveChildren(3, Node.Status.OPEN);
+      saveChildren(4, null);
+
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(1, 2, 3, 4));
+    }
+
+    @Test
+    @DisplayName("should reject an absent node, naming its id")
+    void should_reject_absent_node_naming_id() {
+      assertThatExceptionOfType(NoSuchElementException.class)
+          .isThrownBy(() -> service.getNodeStatusSummary(ABSENT_ID))
+          .withMessageContaining(ABSENT_ID.value());
+    }
+
+    @Test
+    @DisplayName("should reject a deleted node, naming its id")
+    void should_reject_deleted_node_naming_id() {
+      repository.save(NodeMother.aNode().id(DELETED_ID).build());
+      repository.softDeleteSubtree(DELETED_ID, NOW);
+
+      assertThatExceptionOfType(NoSuchElementException.class)
+          .isThrownBy(() -> service.getNodeStatusSummary(DELETED_ID))
+          .withMessageContaining(DELETED_ID.value());
+    }
+
+    // A test that changes a child reads once before the change too, so a summary kept from an
+    // earlier read fails it
+    @Test
+    @DisplayName("should follow a child's status change")
+    void should_follow_child_status_change() {
+      var child = saveChild(parent.getId(), Node.Status.OPEN);
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(0, 0, 1, 0));
+
+      service.setNodeStatus(
+          new SetNodeStatusUseCase.Command(child.getId(), Optional.of(Node.Status.DONE)));
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(1, 0, 0, 0));
+    }
+
+    @Test
+    @DisplayName("should count a child added after a read")
+    void should_count_child_added_after_read() {
+      saveChildren(1, Node.Status.OPEN);
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(0, 0, 1, 0));
+
+      saveChildren(1, Node.Status.IN_PROGRESS);
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(0, 1, 1, 0));
+    }
+
+    @Test
+    @DisplayName("should leave out a deleted child")
+    void should_leave_out_deleted_child() {
+      saveChildren(1, Node.Status.DONE);
+      var child = saveChild(parent.getId(), Node.Status.OPEN);
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(1, 0, 1, 0));
+
+      repository.softDeleteSubtree(child.getId(), NOW);
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(1, 0, 0, 0));
+    }
+
+    @Test
+    @DisplayName("should count a restored child again")
+    void should_count_restored_child_again() {
+      saveChildren(1, Node.Status.DONE);
+      var child = saveChild(parent.getId(), Node.Status.OPEN);
+      repository.softDeleteSubtree(child.getId(), NOW);
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(1, 0, 0, 0));
+
+      repository.restoreSubtree(child.getId(), NOW);
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(1, 0, 1, 0));
+    }
+
+    @Test
+    @DisplayName("should not count a grandchild")
+    void should_not_count_grandchild() {
+      var child = saveChild(parent.getId(), Node.Status.DONE);
+      // Not DONE like its parent, so counting grandchildren in place of children changes the Result
+      saveChild(child.getId(), Node.Status.OPEN);
+
+      assertThat(service.getNodeStatusSummary(parent.getId()))
+          .isEqualTo(new GetNodeStatusSummaryQuery.Result(1, 0, 0, 0));
+    }
+
+    @Test
+    @DisplayName("should reject a null nodeId")
+    void should_reject_null_node_id() {
+      assertThatNullPointerException()
+          .isThrownBy(() -> service.getNodeStatusSummary(null))
+          .withMessage("nodeId must not be null");
     }
   }
 

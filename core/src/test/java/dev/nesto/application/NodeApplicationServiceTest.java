@@ -52,12 +52,11 @@ class NodeApplicationServiceTest {
           new SetNodeStatusUseCase.Command(node.getId(), Optional.of(Node.Status.DONE)));
 
       assertThat(repository.findById(node.getId()))
-          .hasValueSatisfying(
-              n -> {
-                assertThat(n.getStatus()).hasValue(Node.Status.DONE);
-                assertThat(n.getCompletedAt()).hasValue(NOW);
-                assertThat(n.getUpdatedAt()).isEqualTo(NOW);
-              });
+          .hasValueSatisfying(n -> {
+            assertThat(n.getStatus()).hasValue(Node.Status.DONE);
+            assertThat(n.getCompletedAt()).hasValue(NOW);
+            assertThat(n.getUpdatedAt()).isEqualTo(NOW);
+          });
     }
 
     @Test
@@ -69,11 +68,10 @@ class NodeApplicationServiceTest {
           new SetNodeStatusUseCase.Command(node.getId(), Optional.of(Node.Status.OPEN)));
 
       assertThat(repository.findById(node.getId()))
-          .hasValueSatisfying(
-              n -> {
-                assertThat(n.getStatus()).hasValue(Node.Status.OPEN);
-                assertThat(n.getCompletedAt()).isEmpty();
-              });
+          .hasValueSatisfying(n -> {
+            assertThat(n.getStatus()).hasValue(Node.Status.OPEN);
+            assertThat(n.getCompletedAt()).isEmpty();
+          });
     }
 
     @Test
@@ -84,11 +82,10 @@ class NodeApplicationServiceTest {
       service.setNodeStatus(new SetNodeStatusUseCase.Command(node.getId(), Optional.empty()));
 
       assertThat(repository.findById(node.getId()))
-          .hasValueSatisfying(
-              n -> {
-                assertThat(n.getStatus()).isEmpty();
-                assertThat(n.getCompletedAt()).isEmpty();
-              });
+          .hasValueSatisfying(n -> {
+            assertThat(n.getStatus()).isEmpty();
+            assertThat(n.getCompletedAt()).isEmpty();
+          });
     }
 
     @Test

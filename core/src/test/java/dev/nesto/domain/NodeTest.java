@@ -81,80 +81,71 @@ class NodeTest {
     @DisplayName("should reject null id")
     void should_reject_null_id() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.create(
-                      null, NodeMother.NAME, null, Optional.empty(), NodeMother.POSITION, NOW));
+          .isThrownBy(() ->
+              Node.create(null, NodeMother.NAME, null, Optional.empty(), NodeMother.POSITION, NOW));
     }
 
     @Test
     @DisplayName("should reject null name")
     void should_reject_null_name() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.create(
-                      NodeMother.NODE_ID, null, null, Optional.empty(), NodeMother.POSITION, NOW));
+          .isThrownBy(() ->
+              Node.create(
+                  NodeMother.NODE_ID, null, null, Optional.empty(), NodeMother.POSITION, NOW));
     }
 
     @Test
     @DisplayName("should reject blank name")
     void should_reject_blank_name() {
       assertThatIllegalArgumentException()
-          .isThrownBy(
-              () ->
-                  Node.create(
-                      NodeMother.NODE_ID, "   ", null, Optional.empty(), NodeMother.POSITION, NOW));
+          .isThrownBy(() ->
+              Node.create(
+                  NodeMother.NODE_ID, "   ", null, Optional.empty(), NodeMother.POSITION, NOW));
     }
 
     @Test
     @DisplayName("should reject null parentId")
     void should_reject_null_parent_id() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.create(
-                      NodeMother.NODE_ID, NodeMother.NAME, null, null, NodeMother.POSITION, NOW));
+          .isThrownBy(() ->
+              Node.create(
+                  NodeMother.NODE_ID, NodeMother.NAME, null, null, NodeMother.POSITION, NOW));
     }
 
     @Test
     @DisplayName("should reject self-referential parent")
     void should_reject_self_referential_parent() {
       assertThatIllegalArgumentException()
-          .isThrownBy(
-              () ->
-                  Node.create(
-                      NodeMother.NODE_ID,
-                      NodeMother.NAME,
-                      null,
-                      Optional.of(NodeMother.NODE_ID),
-                      NodeMother.POSITION,
-                      NOW));
+          .isThrownBy(() ->
+              Node.create(
+                  NodeMother.NODE_ID,
+                  NodeMother.NAME,
+                  null,
+                  Optional.of(NodeMother.NODE_ID),
+                  NodeMother.POSITION,
+                  NOW));
     }
 
     @Test
     @DisplayName("should reject null position")
     void should_reject_null_position() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.create(
-                      NodeMother.NODE_ID, NodeMother.NAME, null, Optional.empty(), null, NOW));
+          .isThrownBy(() ->
+              Node.create(NodeMother.NODE_ID, NodeMother.NAME, null, Optional.empty(), null, NOW));
     }
 
     @Test
     @DisplayName("should reject null now")
     void should_reject_null_now() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.create(
-                      NodeMother.NODE_ID,
-                      NodeMother.NAME,
-                      null,
-                      Optional.empty(),
-                      NodeMother.POSITION,
-                      null));
+          .isThrownBy(() ->
+              Node.create(
+                  NodeMother.NODE_ID,
+                  NodeMother.NAME,
+                  null,
+                  Optional.empty(),
+                  NodeMother.POSITION,
+                  null));
     }
   }
 
@@ -456,133 +447,126 @@ class NodeTest {
     @DisplayName("should reject null id")
     void should_reject_null_id() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.reconstitute(
-                      null,
-                      NodeMother.NAME,
-                      null,
-                      null,
-                      NodeMother.POSITION,
-                      NodeMother.CREATED_AT,
-                      NodeMother.UPDATED_AT,
-                      null,
-                      null,
-                      null));
+          .isThrownBy(() ->
+              Node.reconstitute(
+                  null,
+                  NodeMother.NAME,
+                  null,
+                  null,
+                  NodeMother.POSITION,
+                  NodeMother.CREATED_AT,
+                  NodeMother.UPDATED_AT,
+                  null,
+                  null,
+                  null));
     }
 
     @Test
     @DisplayName("should reject null name")
     void should_reject_null_name() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.reconstitute(
-                      NodeMother.NODE_ID,
-                      null,
-                      null,
-                      null,
-                      NodeMother.POSITION,
-                      NodeMother.CREATED_AT,
-                      NodeMother.UPDATED_AT,
-                      null,
-                      null,
-                      null));
+          .isThrownBy(() ->
+              Node.reconstitute(
+                  NodeMother.NODE_ID,
+                  null,
+                  null,
+                  null,
+                  NodeMother.POSITION,
+                  NodeMother.CREATED_AT,
+                  NodeMother.UPDATED_AT,
+                  null,
+                  null,
+                  null));
     }
 
     @Test
     @DisplayName("should reject blank name")
     void should_reject_blank_name() {
       assertThatIllegalArgumentException()
-          .isThrownBy(
-              () ->
-                  Node.reconstitute(
-                      NodeMother.NODE_ID,
-                      "   ",
-                      null,
-                      null,
-                      NodeMother.POSITION,
-                      NodeMother.CREATED_AT,
-                      NodeMother.UPDATED_AT,
-                      null,
-                      null,
-                      null));
+          .isThrownBy(() ->
+              Node.reconstitute(
+                  NodeMother.NODE_ID,
+                  "   ",
+                  null,
+                  null,
+                  NodeMother.POSITION,
+                  NodeMother.CREATED_AT,
+                  NodeMother.UPDATED_AT,
+                  null,
+                  null,
+                  null));
     }
 
     @Test
     @DisplayName("should reject self-referential parent")
     void should_reject_self_referential_parent() {
       assertThatIllegalArgumentException()
-          .isThrownBy(
-              () ->
-                  Node.reconstitute(
-                      NodeMother.NODE_ID,
-                      NodeMother.NAME,
-                      null,
-                      NodeMother.NODE_ID,
-                      NodeMother.POSITION,
-                      NodeMother.CREATED_AT,
-                      NodeMother.UPDATED_AT,
-                      null,
-                      null,
-                      null));
+          .isThrownBy(() ->
+              Node.reconstitute(
+                  NodeMother.NODE_ID,
+                  NodeMother.NAME,
+                  null,
+                  NodeMother.NODE_ID,
+                  NodeMother.POSITION,
+                  NodeMother.CREATED_AT,
+                  NodeMother.UPDATED_AT,
+                  null,
+                  null,
+                  null));
     }
 
     @Test
     @DisplayName("should reject null position")
     void should_reject_null_position() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.reconstitute(
-                      NodeMother.NODE_ID,
-                      NodeMother.NAME,
-                      null,
-                      null,
-                      null,
-                      NodeMother.CREATED_AT,
-                      NodeMother.UPDATED_AT,
-                      null,
-                      null,
-                      null));
+          .isThrownBy(() ->
+              Node.reconstitute(
+                  NodeMother.NODE_ID,
+                  NodeMother.NAME,
+                  null,
+                  null,
+                  null,
+                  NodeMother.CREATED_AT,
+                  NodeMother.UPDATED_AT,
+                  null,
+                  null,
+                  null));
     }
 
     @Test
     @DisplayName("should reject null createdAt")
     void should_reject_null_created_at() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.reconstitute(
-                      NodeMother.NODE_ID,
-                      NodeMother.NAME,
-                      null,
-                      null,
-                      NodeMother.POSITION,
-                      null,
-                      NodeMother.UPDATED_AT,
-                      null,
-                      null,
-                      null));
+          .isThrownBy(() ->
+              Node.reconstitute(
+                  NodeMother.NODE_ID,
+                  NodeMother.NAME,
+                  null,
+                  null,
+                  NodeMother.POSITION,
+                  null,
+                  NodeMother.UPDATED_AT,
+                  null,
+                  null,
+                  null));
     }
 
     @Test
     @DisplayName("should reject null updatedAt")
     void should_reject_null_updated_at() {
       assertThatNullPointerException()
-          .isThrownBy(
-              () ->
-                  Node.reconstitute(
-                      NodeMother.NODE_ID,
-                      NodeMother.NAME,
-                      null,
-                      null,
-                      NodeMother.POSITION,
-                      NodeMother.CREATED_AT,
-                      null,
-                      null,
-                      null,
-                      null));
+          .isThrownBy(() ->
+              Node.reconstitute(
+                  NodeMother.NODE_ID,
+                  NodeMother.NAME,
+                  null,
+                  null,
+                  NodeMother.POSITION,
+                  NodeMother.CREATED_AT,
+                  null,
+                  null,
+                  null,
+                  null));
     }
   }
 
